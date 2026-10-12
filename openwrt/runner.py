@@ -74,7 +74,7 @@ def benchmark_due_with_config(settings, state, scan_path, now, config_path, exec
         # Even syntactically valid v1 JSON is self-asserted. It has no
         # cryptographic binding to independently observed target-specific paths.
         raise RuntimeError("automatic benchmarking blocked: trusted per-target egress attestation unavailable")
-        settings = replace(settings, benchmark_targets=tuple(targets))
+
     outputs = []
     overall_deadline = time.monotonic() + settings.process_timeout_seconds
     count = len(settings.benchmark_targets)
