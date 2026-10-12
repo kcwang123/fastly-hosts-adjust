@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import shutil
 import sys
+import stat
 from readonly_bundle_manifest import READ_ONLY_MODULES, FORBIDDEN, validate
 
 DENIED = {Path(x).stem for x in FORBIDDEN} | {"adguard_api", "adguard_plan", "dryrun_pipeline"}
@@ -58,6 +59,14 @@ def verify(destination):
     destination=Path(destination)
     if destination.is_symlink() or not destination.is_dir() or (destination/"manifest.json").is_symlink():
         raise ValueError("unsafe bundle directory or manifest symlink")
+    for item in (destination, destination/"manifest.json"):
+        info=item.stat()
+        if info.st_mode & 0o022:
+            raise ValueError("group/world writable bundle boundary")
+        if item == destination and not stat.S_ISDIR(info.st_mode):
+            raise ValueError("bundle must be directory")
+        if item != destination and not stat.S_ISREG(info.st_mode):
+            raise ValueError("manifest must be regular file")
     manifest=json.loads((destination/"manifest.json").read_text())
     if manifest.get("format")!=1 or manifest.get("read_only") is not True or manifest.get("dns_writer_included") is not False:
         raise ValueError("invalid deployment manifest")
@@ -69,6 +78,8 @@ def verify(destination):
         file=destination/name
         if file.is_symlink() or not file.is_file():
             raise ValueError("missing or symlink runtime module")
+        if file.stat().st_mode & 0o022:
+            raise ValueError("group/world writable runtime module")
         if hashlib.sha256(file.read_bytes()).hexdigest()!=manifest["files"][name]:
             raise ValueError("modified module")
         deps=imports(file.read_text(encoding="utf-8"))
