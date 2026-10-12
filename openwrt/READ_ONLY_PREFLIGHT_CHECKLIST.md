@@ -1,7 +1,7 @@
 # OpenWrt read-only acceptance checklist — NOT EXECUTED
 
 Use only in an explicitly authorized, operator-controlled shell. These commands
-are for review and evidence gathering, **not approval to deploy**. No credentials,
+are for review and evidence gathering, **not approval to deploy**. No credential disclosure,
 API writes, service restarts, PBR/WARP changes, cron edits or DNS rewrites.
 
 ## Device/OS and Python runtime
@@ -10,7 +10,7 @@ API writes, service restarts, PBR/WARP changes, cron edits or DNS rewrites.
 cat /etc/openwrt_release
 uname -a
 python3 -V
-python3 -c 'import sys,ssl,sysconfig;print(sys.version);print(ssl.OPENSSL_VERSION);print(ssl.get_default_verify_paths());print(sysconfig.get_paths().get("purelib"))'
+python3 -c 'import sys,ssl,sysconfig,http.client,socket,ipaddress,json,statistics;print(sys.version);print(ssl.OPENSSL_VERSION);print(ssl.get_default_verify_paths());print(sysconfig.get_paths().get("purelib"))'
 df -k /overlay
 ```
 
@@ -88,7 +88,7 @@ UNKNOWN nor FAIL authorizes installation, Cron, Benchmark or DNS modification.
 | PBR/WARP | Independently corroborated public egress for each target destination on actual device | Observed public egress differs from required route | Only local route/rule observations available |
 | AdGuard atomic write | Atomic compare-and-swap/recovery design independently implemented and proven | Delete/Add race or external override demonstrated | No trusted CAS support; deployment decision remains BLOCKED |
 
-**Current device evidence for all device-dependent rows: UNKNOWN / NOT ACCEPTED.**
+**Current device observations: UNKNOWN. Release acceptance: NOT ACCEPTED.**
 No commands in this checklist have been executed against the router in this
 engineering session. The DNS write policy is BLOCKED even if a future report
 marks other gates PASS.
