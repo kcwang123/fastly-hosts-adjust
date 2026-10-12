@@ -101,3 +101,11 @@ The isolated `test_openwrt_v3_os_subprocess.py` invokes the actual `https_benchm
 Additional Runner tests confirm a stale artifact left by an executor reporting return code 0 is never reused and that a timeout cannot advance an existing state timestamp. Earlier v3 unit tests cover metadata, elapsed-time, CV, ETag, Cache and target-IP tampering, and multi-target budget boundaries.
 
 Isolated transaction tests already cover `prepared` / `applying` / `committing` recovery branches, lost API write replies, external rewrite drift, journal durability, rename/fsync failure and delete success followed by add failure. No atomic compare-and-swap is available from the current AdGuard Rewrite API flow. These checks do not close a race where a different writer changes an entry between our read and our next API write; therefore **do not authorize write mode**. Real CDN throughput objects and real router preflight remain unapproved.
+
+## Scheduler freshness and multi-target failure (2026-10-12)
+
+A successful *manual configured* benchmark no longer updates `last_health_epoch`: it did not execute the health scanner. Its timestamp remains unchanged/absent, so a health scan can still become due independently. Added two-target runner fault tests showing that malformed first-child v3 output, a timeout, and previously existing benchmark artifacts cannot advance benchmark state. The earlier real TLS OS-subprocess E2E is still single-target; a full multi-target OS-subprocess TLS acceptance run remains outstanding.
+
+## Write-path risk remains blocking
+
+The AdGuard Home owned-only transaction has durable prepared/applying/committing journal transitions and isolation tests for fsync, rename, partial delete/add, registry commit, and external changes. These are not atomic compare-and-swap operations: read-before-write checks leave a race and recovered state can be ambiguous. No live DNS write, Router deployment or scheduler enablement is authorized. No validated high-volume GitHub/Twitch Fastly benchmark object or destination-bound WARP/PBR egress attestation has been obtained.
