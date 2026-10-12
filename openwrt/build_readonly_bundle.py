@@ -16,6 +16,14 @@ def imports(source):
             result.update(a.name.split(".")[0] for a in node.names)
         elif isinstance(node,ast.ImportFrom) and node.module:
             result.add(node.module.split(".")[0])
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        fn=node.func
+        dynamic=(isinstance(fn,ast.Name) and fn.id=="__import__") or (
+            isinstance(fn,ast.Attribute) and fn.attr=="import_module")
+        if dynamic and isinstance(node.args[0],ast.Constant) and isinstance(node.args[0].value,str):
+            result.add(node.args[0].value.split(".")[0])
     return result
 
 def build(source, destination):
@@ -62,7 +70,7 @@ def verify(destination):
         if hashlib.sha256(file.read_bytes()).hexdigest()!=manifest["files"][name]:
             raise ValueError("modified module")
         deps=imports(file.read_text(encoding="utf-8"))
-        if deps & DENIED or (deps & local)-local:
+        if deps & DENIED:
             raise ValueError("forbidden dependency")
     return True
 
