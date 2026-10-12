@@ -7,6 +7,8 @@ import (
  "os"
  "path/filepath"
  "net"
+ "context"
+ "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scanner"
 )
 
 type Config struct {
@@ -106,4 +108,18 @@ func RunFiles(configPath,statePath,scanPath string,now int64)(string,error){
  if err=tmp.Close();err!=nil{return "error",err}
  if err=os.Rename(name,statePath);err!=nil{return "error",err}
  return result,nil
+}
+
+// RunHealth builds diagnostic scan evidence with an injected scanner probe.
+// It does not provide a production network CLI or authorize DNS operations.
+func RunHealth(ctx context.Context,config,old []byte,now int64,targets []scanner.Target,probe scanner.Probe)(string,[]byte,[]byte,error){
+ c,e:=LoadConfig(config);if e!=nil{return "",nil,nil,e}
+ st,e:=LoadState(old);if e!=nil{return "",nil,nil,e}
+ if now<0{return "",nil,nil,errors.New("invalid clock")}
+ mode:=Mode(c,st,now)
+ if mode!="health"{if mode=="skip"{return "skipped",nil,nil,nil};return "pending",nil,nil,nil}
+ evidence,e:=scanner.Scan(ctx,targets,probe);if e!=nil{return "error",nil,nil,e}
+ status,next,e:=Run(config,old,evidence,now)
+ if e!=nil{return "error",nil,nil,e}
+ return status,next,evidence,nil
 }
