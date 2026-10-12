@@ -56,6 +56,8 @@ def build(source, destination):
 
 def verify(destination):
     destination=Path(destination)
+    if destination.is_symlink() or not destination.is_dir() or (destination/"manifest.json").is_symlink():
+        raise ValueError("unsafe bundle directory or manifest symlink")
     manifest=json.loads((destination/"manifest.json").read_text())
     if manifest.get("format")!=1 or manifest.get("read_only") is not True or manifest.get("dns_writer_included") is not False:
         raise ValueError("invalid deployment manifest")
