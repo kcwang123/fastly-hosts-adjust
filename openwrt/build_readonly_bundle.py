@@ -59,6 +59,15 @@ def verify(destination):
     destination=Path(destination)
     if destination.is_symlink() or not destination.is_dir() or (destination/"manifest.json").is_symlink():
         raise ValueError("unsafe bundle directory or manifest symlink")
+    # A replaceable parent defeats manifest checks: the entire bundle could
+    # be swapped between verification and import. Sticky /tmp ancestors are
+    # not treated as proof of a safe installed parent.
+    parent=destination.parent
+    if parent.is_symlink() or not parent.is_dir():
+        raise ValueError("unsafe bundle parent directory")
+    parent_info=parent.stat()
+    if parent_info.st_mode & 0o022:
+        raise ValueError("group/world writable bundle parent")
     for item in (destination, destination/"manifest.json"):
         info=item.stat()
         if info.st_mode & 0o022:
