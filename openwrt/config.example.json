@@ -25,5 +25,6 @@
   "benchmark_deadline_seconds": 120,
   "benchmark_targets": [],
   "auto_benchmark": false,
-  "trusted_baselines": {}
+  "trusted_baselines": {},
+  "max_scan_age_seconds": 14400
 }
