@@ -37,12 +37,14 @@ class Budget:
         self.remaining += reserved - actual
 
 
-def download(domain, ip, limit, connect_timeout, read_timeout):
+def download(domain, ip, limit, connect_timeout, read_timeout, deadline=None):
     if domain not in SERVICES:
         raise ValueError("unrecognized Fastly hostname")
     address = ipaddress.ip_address(ip)
     if address.version != 4 or not address.is_global:
         raise ValueError("public IPv4 required")
+    if deadline is not None and time.monotonic() >= deadline:
+        raise TimeoutError("benchmark deadline exceeded")
     sock = None
     tls = None
     count = 0
@@ -51,7 +53,7 @@ def download(domain, ip, limit, connect_timeout, read_timeout):
         sock = socket.create_connection((ip, 443), timeout=connect_timeout)
         tls = ssl.create_default_context().wrap_socket(sock, server_hostname=domain)
         sock = None
-        tls.settimeout(read_timeout)
+        tls.settimeout(min(read_timeout, max(0.001, deadline - time.monotonic())) if deadline else read_timeout)
         request = ("GET " + SERVICES[domain] + " HTTP/1.1\r\nHost: " + domain
                    + "\r\nRange: bytes=0-" + str(limit - 1)
                    + "\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n")
@@ -62,6 +64,11 @@ def download(domain, ip, limit, connect_timeout, read_timeout):
             raise ValueError("HTTP download status not OK")
         # A server may ignore Range. Never read past the reserved budget.
         while count < limit:
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("benchmark deadline exceeded")
+                tls.settimeout(min(read_timeout, remaining))
             chunk = response.read(min(16384, limit - count))
             if not chunk:
                 break
@@ -79,15 +86,20 @@ def download(domain, ip, limit, connect_timeout, read_timeout):
 
 
 def benchmark(domain, baseline_ip, candidate_ip, settings, *, sampler=download):
+    if settings.benchmark_workers != 1:
+        raise ValueError("parallel mode not implemented")
     if baseline_ip == candidate_ip:
         raise ValueError("baseline and candidate IP must differ")
     budget = Budget(settings.max_benchmark_bytes)
+    deadline = time.monotonic() + settings.benchmark_deadline_seconds
     samples = {"baseline_mbps": [], "candidate_mbps": []}
     statuses = []
     # Alternate pair order across rounds to reduce systematic bias.
     for round_no in range(settings.benchmark_rounds):
         labels = ("baseline", "candidate") if round_no % 2 == 0 else ("candidate", "baseline")
         for label in labels:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("benchmark deadline exceeded")
             reserved = budget.reserve(settings.benchmark_sample_bytes)
             ip = baseline_ip if label == "baseline" else candidate_ip
             # Do not refund bytes from a failed/ambiguous transport: charge
@@ -99,6 +111,8 @@ def benchmark(domain, baseline_ip, candidate_ip, settings, *, sampler=download):
                 budget.finish(reserved, reserved)
                 raise
             budget.finish(reserved, result["bytes"])
+            if time.monotonic() >= deadline:
+                raise TimeoutError("benchmark deadline exceeded")
             if result.get("tls_verified") is not True or result.get("status") not in (200, 206):
                 raise ValueError("TLS or HTTP verification failed")
             samples[label + "_mbps"].append(result["mbps"])
