@@ -17,7 +17,7 @@ from settings import Settings
 class RunnerTests(unittest.TestCase):
     def test_new_install_blocks_benchmark_until_implemented(self):
         with tempfile.TemporaryDirectory() as d:
-            result = runner.run_once(Settings(), Path(d)/"state.json", Path(d)/"scan.json", 100000)
+            result = runner.run_once(Settings(retry_count=0), Path(d)/"state.json", Path(d)/"scan.json", 100000, executor=lambda *a, **k: Mock(returncode=2))
             self.assertEqual(result["status"], "error")
             self.assertFalse((Path(d)/"state.json").exists())
 
