@@ -11,6 +11,11 @@ spec=importlib.util.spec_from_file_location("runner_ext",root/"runner.py")
 m=importlib.util.module_from_spec(spec)
 sys.modules[spec.name]=m;spec.loader.exec_module(m)
 from settings import Settings
+from speed_contract import check_evidence
+
+def bundle(evidence):
+    return {"evidence":evidence,"evaluation":check_evidence(evidence,max_bytes=1200,min_improvement_percent=15,minimum_rounds=3),"diagnostics":{"cv_percent":{"baseline_mbps":0.0,"candidate_mbps":0.0},"cache_state":"UNKNOWN","etag":None},"dry_run":True}
+
 TARGET={"domain":"raw.githubusercontent.com","baseline_ip":"151.101.2.133",
         "candidate_ip":"151.101.1.133"}
 GOOD={"schema_version":2,"safe_to_apply":False,"bytes_downloaded":600,
@@ -25,7 +30,7 @@ class RunnerBenchmarkTests(unittest.TestCase):
             cfg=Settings(benchmark_targets=(TARGET,),benchmark_rounds=3,
                          benchmark_sample_bytes=100,max_benchmark_bytes=600)
             def execute(cmd, **kwargs):
-                Path(cmd[cmd.index("--output")+1]).write_text(json.dumps(GOOD))
+                Path(cmd[cmd.index("--output")+1]).write_text(json.dumps(bundle(GOOD)))
                 return Mock(returncode=0)
             result=m.run_once(cfg,state,scan,100000,executor=execute,config_path="config.json")
             self.assertEqual(result["status"],"ok")
