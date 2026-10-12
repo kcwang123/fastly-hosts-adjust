@@ -48,6 +48,28 @@ class RecoveryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"concurrent"):
                 mod.recover(api,reg,snap,dry_run=False)
             self.assertTrue(snap.exists())
+    def test_restart_after_registry_commit_before_journal_delete(self):
+        with tempfile.TemporaryDirectory() as d:
+            api=API({D:B})
+            reg,snap=self.fixture(d,{D:A},{D:A},{D:B})
+            reg.write_text(json.dumps({D:B}));reg.chmod(0o600)
+            journal=json.loads(snap.read_text())
+            journal["phase"]="committing"
+            snap.write_text(json.dumps(journal));snap.chmod(0o600)
+            plan=mod.recover(api,reg,snap,dry_run=True)
+            self.assertEqual(len(plan["actions"]),1)
+            self.assertEqual(api.data[D],B)
+            mod.recover(api,reg,snap,dry_run=False)
+            self.assertEqual(api.data[D],A)
+            self.assertEqual(json.loads(reg.read_text()),{D:A})
+            self.assertFalse(snap.exists())
+    def test_registry_drift_refuses_recovery(self):
+        with tempfile.TemporaryDirectory() as d:
+            api=API({D:B});reg,snap=self.fixture(d,{D:A},{D:A},{D:B})
+            reg.write_text(json.dumps({D:"151.101.3.133"}));reg.chmod(0o600)
+            with self.assertRaisesRegex(ValueError,"registry conflicts"):
+                mod.recover(api,reg,snap,dry_run=False)
+            self.assertTrue(snap.exists())
     def test_new_entry_removed(self):
         with tempfile.TemporaryDirectory() as d:
             api=API({D:B});reg,snap=self.fixture(d,{}, {}, {D:B})
