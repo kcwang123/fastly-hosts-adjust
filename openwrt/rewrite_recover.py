@@ -6,7 +6,7 @@ Caller must hold the same exclusive lock as the transaction writer.
 """
 import json
 from pathlib import Path
-from rewrite_tx import current_map, atomic_save, verify_private_file
+from rewrite_tx import current_map, atomic_save, verify_private_file, durable_unlink
 
 
 def recover(api, registry_path, snapshot_path, *, dry_run=True):
@@ -29,6 +29,14 @@ def recover(api, registry_path, snapshot_path, *, dry_run=True):
             raise ValueError("snapshot contains unowned DNS rewrite")
         if domain in ownership and ownership[domain] != old:
             raise ValueError("snapshot ownership mismatch")
+    registry = Path(registry_path)
+    registry_data = json.loads(registry.read_text(encoding="utf-8")) if registry.exists() else {}
+    if not isinstance(registry_data, dict):
+        raise ValueError("invalid ownership registry")
+    permitted_registry = dict(ownership)
+    permitted_registry.update(desired)
+    if registry_data != ownership and registry_data != permitted_registry:
+        raise ValueError("registry conflicts with interrupted transaction")
     current = current_map(api.list())
     actions = []
     for domain, wanted in sorted(desired.items()):
@@ -51,5 +59,5 @@ def recover(api, registry_path, snapshot_path, *, dry_run=True):
             raise RuntimeError("recovery verification failed: " + domain)
     # Registry may have been committed just before crash. Restore original ownership.
     atomic_save(registry_path, ownership)
-    snapshot_path.unlink()
+    durable_unlink(snapshot_path)
     return {"dry_run": False, "restored": len(actions)}
