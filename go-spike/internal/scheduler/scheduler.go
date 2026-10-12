@@ -4,9 +4,9 @@ import (
  "bytes"
  "encoding/json"
  "errors"
- "fmt"
  "os"
  "path/filepath"
+ "net"
 )
 
 type Config struct {
@@ -21,9 +21,18 @@ type State struct {
 }
 type Scan struct {
  SchemaVersion int `json:"schema_version"`
+ Source string `json:"source"`
  Evidence string `json:"evidence"`
  SafeToApply bool `json:"safe_to_apply"`
- Candidates []json.RawMessage `json:"candidates"`
+ ScannedBlocks int `json:"scanned_blocks"`
+ SkippedBlocks int `json:"skipped_blocks"`
+ Candidates []Candidate `json:"candidates"`
+}
+type Candidate struct {
+ Service string `json:"service"`
+ IP string `json:"ip"`
+ Pop string `json:"pop"`
+ LatencyMS float64 `json:"latency_ms"`
 }
 func strict(data []byte,v any)error{
  d:=json.NewDecoder(bytes.NewReader(data));d.DisallowUnknownFields()
@@ -56,7 +65,13 @@ func Mode(c Config,s State,now int64)string{
 }
 func ValidateScan(data []byte)error{
  var s Scan;if err:=strict(data,&s);err!=nil{return err}
- if s.SchemaVersion!=1||s.Evidence!="latency_only"||s.SafeToApply||s.Candidates==nil{return errors.New("untrusted scan")}
+ if s.SchemaVersion!=1||s.Source!="fastly-hosts-adjust"||s.Evidence!="latency_only"||s.SafeToApply||s.Candidates==nil||s.ScannedBlocks<0||s.SkippedBlocks<0{return errors.New("untrusted scan")}
+ for _,c:=range s.Candidates {
+   if c.Service!="github"&&c.Service!="x"&&c.Service!="twitch"{return errors.New("unapproved service")}
+   ip:=net.ParseIP(c.IP)
+   if ip==nil||ip.To4()==nil||ip.IsLoopback()||ip.IsPrivate()||ip.IsUnspecified()||ip.IsMulticast()||ip.IsLinkLocalUnicast(){return errors.New("invalid candidate IP")}
+   if c.Pop==""||c.LatencyMS<=0{return errors.New("invalid candidate observation")}
+ }
  return nil
 }
 // Run is offline-only: scan is externally supplied fixture evidence, not a network action.
@@ -92,4 +107,3 @@ func RunFiles(configPath,statePath,scanPath string,now int64)(string,error){
  if err=os.Rename(name,statePath);err!=nil{return "error",err}
  return result,nil
 }
-var _=fmt.Sprintf
