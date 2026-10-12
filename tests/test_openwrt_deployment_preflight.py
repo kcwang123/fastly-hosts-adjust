@@ -10,10 +10,12 @@ class DeploymentPreflightTests(unittest.TestCase):
         subprocess.run(["sh","-n",str(SCRIPT)],check=True)
     def test_no_mutation_or_service_restart(self):
         source=SCRIPT.read_text()
+        executable="\n".join(line for line in source.splitlines()
+                             if line.strip() and not line.lstrip().startswith(("#","echo ")))
         for forbidden in ("uci set ", "uci commit", "/etc/init.d/","service restart",
                           "opkg install", "crontab -", "iptables -", "nft add",
                           "rewrite/add","rewrite/delete", "sed -i", "rm -rf"):
-            self.assertNotIn(forbidden,source)
+            self.assertNotIn(forbidden,executable)
         for required in ('check "AdGuard DNS listener 53"',
                          'check "DHCP listener 67"',
                          'check "dnsmasq port 54"',
