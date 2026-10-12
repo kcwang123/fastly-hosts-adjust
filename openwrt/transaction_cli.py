@@ -24,8 +24,8 @@ def execute(config, api, *, desired=None, mode="preview", lock_path=None):
     verify_state_paths(registry, snapshot)
     if lock.parent != registry.parent or lock.is_symlink():
         raise ValueError("lock must be a sibling of persistent state files")
-    if mode in ("apply", "recover") and config.dry_run:
-        raise ValueError("dry_run must be explicitly disabled for writes")
+    if mode in ("apply", "recover"):
+        raise ValueError("DNS rewrite write/recovery disabled: AdGuard API lacks atomic CAS")
     with ExclusiveLock(lock):
         if mode in ("recover", "recover-preview"):
             if not snapshot.exists():
