@@ -192,7 +192,7 @@ def main(argv=None):
             raise ValueError("invalid per-target budget")
         settings = replace(settings, max_benchmark_bytes=args.max_bytes)
     output = benchmark(args.domain, args.baseline_ip, args.candidate_ip, settings)
-    Path(args.output).write_text(json.dumps(output["evidence"], indent=2) + "\n", encoding="utf-8")
+    Path(args.output).write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
     return 0
 
 
