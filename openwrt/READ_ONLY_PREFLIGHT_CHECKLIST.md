@@ -91,3 +91,35 @@ UNKNOWN nor FAIL authorizes installation, Cron, Benchmark or DNS modification.
 No commands in this checklist have been executed against the router in this
 engineering session. The DNS write policy is BLOCKED even if a future report
 marks other gates PASS.
+
+## Deployment ownership / trusted code boundary — REQUIRED, NOT EXECUTED
+
+Before a future deployment can be accepted, record (without changing the router):
+```sh
+id
+ls -ld /usr/lib/fastly-optimizer /etc/fastly-optimizer
+ls -l /usr/lib/fastly-optimizer
+python3 -c 'import sys,site,ssl;print(sys.path);print(site.getsitepackages() if hasattr(site,"getsitepackages") else "unknown");print(ssl.get_default_verify_paths())'
+```
+Sanitize any path names that disclose private user information before sharing.
+**PASS** requires a reviewed separate deployment owner for immutable source
+files and a less-privileged runtime identity with no write permission to the
+bundle directory, ancestors permitting replacement, launcher, manifest, modules
+or installed Python import paths. Filesystem capabilities/ACLs/overlay mounts
+must be inspected independently; POSIX mode bits alone are insufficient.
+**FAIL** if runtime can write or replace executable code or its trust manifest.
+**UNKNOWN** if runtime identity, directory ancestry, ACLs, mounts or module
+owners have not been checked.
+
+System Python/site-packages and OS CA trust remain external trust roots even
+when `python -I` is used. `-I` reduces environment and user-site influence
+but cannot establish a sandbox, freeze the system interpreter or eliminate
+check-then-import TOCTOU. Do not treat a self-signed package manifest as an
+independently authenticated provenance statement.
+
+TLS default trust-path output alone is **UNKNOWN**, not PASS, until package
+provenance, owner permissions, roots and hostname-verification behaviour are
+reviewed. The certificate store must not be overridden with an untrusted
+`SSL_CERT_FILE` or similar variable.
+
+No real device commands have been run; this is a checklist only.
