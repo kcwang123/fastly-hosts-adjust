@@ -93,3 +93,11 @@ The test mutates ETag data after persistence and confirms `benchmark_v3.verify` 
 ## Transaction durability fault injections
 
 Isolated test doubles simulate fsync failure, atomic rename failure, API delete succeeding before subsequent add fails, and ownership registry commit errors. A partial API delete with no successful add is **ambiguous** because an external writer could also have removed the rewrite. The code retains its durable journal, fails closed and requires explicit recovery; it deliberately does not claim to have rolled back that ambiguous state automatically. The test does not grant permission for a live AdGuard rewrite. Absence of compare-and-swap means atomicity remains unproven.
+
+## True OS subprocess acceptance and remaining transaction gates (2026-10-12)
+
+The isolated `test_openwrt_v3_os_subprocess.py` invokes the actual `https_benchmark.py` in a separate Python OS process, using a temporary `sitecustomize.py` injected **only into that child** to redirect TCP 443 connections to a controlled local TLS server; the child validates the ephemeral test certificate with `SSL_CERT_FILE`. Runner unlinks a pre-existing invalid output before execution and reads only the new v3 artifact. The test verifies six real TLS/HTTP Range samples and the unchanged read-only evidence state. This is not a real CDN or PBR/WARP acceptance test.
+
+Additional Runner tests confirm a stale artifact left by an executor reporting return code 0 is never reused and that a timeout cannot advance an existing state timestamp. Earlier v3 unit tests cover metadata, elapsed-time, CV, ETag, Cache and target-IP tampering, and multi-target budget boundaries.
+
+Isolated transaction tests already cover `prepared` / `applying` / `committing` recovery branches, lost API write replies, external rewrite drift, journal durability, rename/fsync failure and delete success followed by add failure. No atomic compare-and-swap is available from the current AdGuard Rewrite API flow. These checks do not close a race where a different writer changes an entry between our read and our next API write; therefore **do not authorize write mode**. Real CDN throughput objects and real router preflight remain unapproved.
