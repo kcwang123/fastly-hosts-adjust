@@ -8,6 +8,7 @@ import argparse
 import http.client
 import ipaddress
 import json
+import statistics
 import socket
 import ssl
 import time
@@ -96,8 +97,11 @@ def download(domain, ip, limit, connect_timeout, read_timeout, deadline=None):
             raise ValueError("benchmark object too small for requested sample")
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError("benchmark deadline exceeded")
+        cache = response.getheader("X-Cache", "").upper()
         return {"bytes": count, "mbps": count * 8 / duration / 1_000_000,
-                "status": response.status, "tls_verified": True}
+                "status": response.status, "tls_verified": True,
+                "etag": response.getheader("ETag"),
+                "cache_state": cache if cache in ("HIT", "MISS") else "UNKNOWN"}
     finally:
         if tls is not None:
             tls.close()
@@ -114,6 +118,8 @@ def benchmark(domain, baseline_ip, candidate_ip, settings, *, sampler=download):
     deadline = time.monotonic() + settings.benchmark_deadline_seconds
     samples = {"baseline_mbps": [], "candidate_mbps": []}
     statuses = []
+    etags = []
+    cache_states = []
     # Alternate pair order across rounds to reduce systematic bias.
     for round_no in range(settings.benchmark_rounds):
         labels = ("baseline", "candidate") if round_no % 2 == 0 else ("candidate", "baseline")
@@ -142,6 +148,19 @@ def benchmark(domain, baseline_ip, candidate_ip, settings, *, sampler=download):
                 raise ValueError("TLS or HTTP verification failed")
             samples[label + "_mbps"].append(result["mbps"])
             statuses.append(result["status"])
+            etags.append(result.get("etag"))
+            cache_states.append(result.get("cache_state", "UNKNOWN"))
+    # Missing validators remain diagnostic-only; reject explicit mismatches.
+    known_etags = [x for x in etags if x is not None]
+    if known_etags and (len(known_etags) != len(etags) or len(set(known_etags)) != 1):
+        raise ValueError("ETag mismatch between route samples")
+    known_cache = [x for x in cache_states if x != "UNKNOWN"]
+    if known_cache and (len(known_cache) != len(cache_states) or len(set(known_cache)) != 1):
+        raise ValueError("cache HIT/MISS mismatch between route samples")
+    stability = {key: 100 * statistics.pstdev(values) / statistics.mean(values)
+                 for key, values in samples.items()}
+    if any(value > settings.max_sample_cv_percent for value in stability.values()):
+        raise ValueError("unstable benchmark samples")
     raw = {"schema_version": 2, "safe_to_apply": False,
            "bytes_downloaded": budget.used,
            "measurements": [{"domain": domain, "ip": candidate_ip,
@@ -150,7 +169,9 @@ def benchmark(domain, baseline_ip, candidate_ip, settings, *, sampler=download):
     validated = check_evidence(raw, max_bytes=settings.max_benchmark_bytes,
                                min_improvement_percent=settings.min_improvement_percent,
                                minimum_rounds=settings.benchmark_rounds)
-    return {"evidence": raw, "evaluation": validated, "dry_run": True}
+    return {"evidence": raw, "evaluation": validated, "dry_run": True,
+            "diagnostics": {"cv_percent": stability, "cache_state": cache_states[0],
+                            "etag": etags[0]}}
 
 
 def main(argv=None):
