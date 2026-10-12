@@ -83,3 +83,13 @@ The local v3 record is still not independent proof of remote server identity, ac
 ## DNS recovery phase restrictions
 
 Recovery now accepts only the known `prepared`, `applying` and `committing` journal phases. An unexpected or absent phase is refused. Since no local DNS API write should have occurred in `prepared`, any live divergence from the prepared snapshot is treated as an external change and fails closed, preserving the journal. Tests cover the post-delete/pre-add crash and the external modification of a prepared journal. API delete/add still has no CAS guarantee, so production writes remain prohibited.
+
+## Isolated TLS-to-Runner acceptance (2026-10-12)
+
+A test now starts a loopback TLS endpoint with a temporary SAN certificate and serves six 206 responses with exact Content-Range, Content-Length, consistent ETag and X-Cache. It invokes the actual `https_benchmark.main` CLI code under injected loopback sockets, writes the v3 JSON envelope and has Runner independently load and verify its per-round samples. No public network or router services are contacted. This is an in-process CLI invocation under controlled socket injection, not an OS-spawned subprocess or a production CDN acceptance test.
+
+The test mutates ETag data after persistence and confirms `benchmark_v3.verify` rejects the altered record. Independent tests cover missing/duplicate rounds, mismatched target pairs, inconsistent elapsed time/CV/cache and a multi-target byte budget. Do not interpret a green CI as proof of route authenticity or real CDN throughput.
+
+## Transaction durability fault injections
+
+Isolated test doubles simulate fsync failure, atomic rename failure, API delete succeeding before subsequent add fails, and ownership registry commit errors. A partial API delete with no successful add is **ambiguous** because an external writer could also have removed the rewrite. The code retains its durable journal, fails closed and requires explicit recovery; it deliberately does not claim to have rolled back that ambiguous state automatically. The test does not grant permission for a live AdGuard rewrite. Absence of compare-and-swap means atomicity remains unproven.
