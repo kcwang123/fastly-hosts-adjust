@@ -42,6 +42,13 @@ class RunnerBenchmarkTests(unittest.TestCase):
                               config_path="config.json")
             self.assertEqual(result["status"],"error")
             self.assertFalse(state.exists())
+    def test_aggregate_budget_rejected_before_network(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg=Settings(benchmark_targets=(TARGET,TARGET),benchmark_rounds=3,
+                         benchmark_sample_bytes=100,max_benchmark_bytes=600)
+            with self.assertRaisesRegex(ValueError,"global budget"):
+                m.benchmark_due_with_config(cfg,{},Path(d)/"scan.json",10000,"config.json",
+                    lambda *a,**k:self.fail("must not call network"))
     def test_benchmark_only_after_24h(self):
         cfg=Settings(benchmark_targets=(TARGET,))
         self.assertEqual(m.choose_mode(cfg,{"last_health_epoch":100000,
