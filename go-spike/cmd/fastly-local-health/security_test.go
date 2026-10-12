@@ -1,5 +1,5 @@
 package main
-import("os";"path/filepath";"sync";"testing")
+import("os";"path/filepath";"sync";"sync/atomic";"testing";"time")
 func TestUnsafeFilesRejected(t *testing.T){
  dir:=t.TempDir()
  file:=filepath.Join(dir,"fixture");if err:=os.WriteFile(file,[]byte("x"),0600);err!=nil{t.Fatal(err)}
@@ -11,10 +11,10 @@ func TestUnsafeFilesRejected(t *testing.T){
 }
 func TestStateLockSerializes(t *testing.T){
  path:=filepath.Join(t.TempDir(),"state")
- count:=0;var wg sync.WaitGroup
- for i:=0;i<4;i++{wg.Add(1);go func(){defer wg.Done();_,err:=lockedState(path,func()(string,error){value:=count;count=value+1;return "ok",nil});if err!=nil{t.Error(err)}}()}
+ var count atomic.Int64;var active atomic.Int64;var overlap atomic.Bool;var wg sync.WaitGroup
+ for i:=0;i<4;i++{wg.Add(1);go func(){defer wg.Done();_,err:=lockedState(path,func()(string,error){if active.Add(1)!=1{overlap.Store(true)};time.Sleep(time.Millisecond);count.Add(1);active.Add(-1);return "ok",nil});if err!=nil{t.Error(err)}}()}
  wg.Wait()
- if count!=4{t.Fatalf("lost serialized updates: %d",count)}
+ if count.Load()!=4||overlap.Load(){t.Fatalf("not serialized: count=%d overlap=%v",count.Load(),overlap.Load())}
 }
 
 func TestStateLockRejectsUntrustedDirectory(t *testing.T){
