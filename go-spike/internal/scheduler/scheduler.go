@@ -8,6 +8,7 @@ import (
  "path/filepath"
  "net"
  "context"
+ "io"
  "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scanner"
 )
 
@@ -39,7 +40,7 @@ type Candidate struct {
 func strict(data []byte,v any)error{
  d:=json.NewDecoder(bytes.NewReader(data));d.DisallowUnknownFields()
  if err:=d.Decode(v);err!=nil{return err}
- var extra any;if err:=d.Decode(&extra);err==nil{return errors.New("extra JSON")}else if err.Error()!="EOF"{return err}
+ var extra any;if err:=d.Decode(&extra);err==nil{return errors.New("extra JSON")}else if err!=io.EOF{return err}
  return nil
 }
 func LoadConfig(data []byte)(Config,error){
@@ -49,7 +50,7 @@ func LoadConfig(data []byte)(Config,error){
  if err:=json.Unmarshal(data,&fields);err!=nil{return c,err}
  for _,k:=range []string{"dry_run","auto_benchmark"}{if _,ok:=fields[k];!ok{return c,errors.New("missing safety gate")}}
  if !c.DryRun||c.AutoBenchmark{return c,errors.New("unsafe configuration")}
- if c.HealthHours==0{c.HealthHours=3};if c.BenchmarkHours==0{c.BenchmarkHours=24}
+ if _,ok:=fields["health_interval_hours"];!ok{c.HealthHours=3};if _,ok:=fields["benchmark_interval_hours"];!ok{c.BenchmarkHours=24}
  if c.HealthHours<1||c.BenchmarkHours<c.HealthHours{return c,errors.New("invalid intervals")}
  return c,nil
 }
@@ -67,7 +68,7 @@ func Mode(c Config,s State,now int64)string{
 }
 func ValidateScan(data []byte)error{
  var s Scan;if err:=strict(data,&s);err!=nil{return err}
- if s.SchemaVersion!=1||s.Source!="fastly-hosts-adjust"||s.Evidence!="latency_only"||s.SafeToApply||s.Candidates==nil||s.ScannedBlocks<0||s.SkippedBlocks<0{return errors.New("untrusted scan")}
+ if s.SchemaVersion!=1||s.Source!="fastly-hosts-adjust"||s.Evidence!="latency_only"||s.SafeToApply||s.Candidates==nil||s.ScannedBlocks<0||s.SkippedBlocks<0||s.ScannedBlocks!=len(s.Candidates){return errors.New("untrusted scan")}
  for _,c:=range s.Candidates {
    if c.Service!="github"&&c.Service!="x"&&c.Service!="twitch"{return errors.New("unapproved service")}
    ip:=net.ParseIP(c.IP)
