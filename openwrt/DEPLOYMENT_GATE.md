@@ -145,3 +145,21 @@ The read-only package is not approved for Router deployment, public CDN throughp
 In addition to the SHA-256 and AST/file-inventory checks, `test_openwrt_bundle_runtime_smoke.py` builds the **actual** source-only deployment directory and runs its bundled `runner.py` as a Python child with no source-repository `PYTHONPATH`. The test uses fresh local timestamps so the no-network scheduler reports `skipped`, preserves state bytes, and does not write a scan artifact. A separate isolated Python `-I` interpreter receives the bundle directory as its only explicitly added search path and fails to import `rewrite_tx`. Note: `-I` cannot directly execute the current script-by-path layout because isolated Python excludes the script directory from `sys.path`; the runtime smoke therefore uses normal script import semantics with a cleared `PYTHONPATH`, not full hermetic isolation.
 
 This validates package-local imports, but it does **not** prove the runtime is an OS sandbox, that an operator cannot add privileged modules to system-wide Python paths, or that environment certificate configuration and external egress are trusted. No Router deployment, Cron enablement, DNS operation or live CDN check has occurred. The Gate remains NOT ACCEPTED for live operation. Next review: runtime TLS certificate source and environment allowlist, public egress provenance, verified large-object Range response and OpenWrt device read-only preflight.
+
+## Runtime environment and acceptance matrix — 2026-10-12
+
+A new **explicit opt-in** read-only bundle entrypoint `readonly_launcher.py` starts `runner.py` through `python -I -B -c`, inserting exactly the bundle directory into `sys.path`. The launcher child uses a minimal fixed environment (`PATH`, `LANG`, `LC_ALL`, `PYTHONDONTWRITEBYTECODE`) and does **not** forward `PYTHONPATH`, `PYTHONHOME`, `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, or other untrusted caller variables. An actual packaged Runner Smoke confirms that a malicious `sitecustomize.py` and shadow `settings.py` supplied through `PYTHONPATH` cannot execute. CA selection inside the child therefore comes from Python/OS default trust and is **not** user-configurable by those environment variables. Minimal bundle verification checks SHA-256 for every included file and rejects unexpected files and direct or literal dynamic imports of known DNS writer modules.
+
+This is a **process environment control**, not OS isolation. In particular, the raw `runner.py` remains present and directly executable, site-wide standard modules and operating-system CA files still exist, dynamic imports with computed names cannot be proven safe by static AST checks, and a privileged actor can invoke other code. No deployable root/container sandbox, filesystem ACL, filesystem mount isolation, seccomp, IPK installer or service manager setup has been approved.
+
+| Acceptance gate | Evidence required | Decision |
+| --- | --- | --- |
+| Package integrity | exact file inventory, reproducible SHA-256, negative write-module import and real bundled Runtime Smoke | TESTED IN CI ONLY |
+| TLS trust boundary | OS CA provenance, hostname/SNI validation, no untrusted CA override and package entrypoint discipline | PARTIAL — device not validated |
+| GitHub/Twitch large object | approved stable object >= configured sample, 206, exact Content-Range/Length, verified ETag and Cache behaviour on **both** routes | NOT ACCEPTED |
+| PBR/WARP public egress | independent and target-specific public exit attestation across actual destination pair | NOT ACCEPTED |
+| OpenWrt read-only preflight | Python/SSL support, storage, DNS/DHCP listeners, PBR/WARP topology and no changes to services or routes | NOT ACCEPTED |
+| AdGuard rewrite | independently reviewed atomic CAS alternative and conflict-safe recovery | PERMANENTLY BLOCKED UNTIL REDESIGNED |
+| Automatic benchmark/Cron | trusted route source, all previous gates accepted and explicit operator approval | BLOCKED |
+
+No production Router, DNS/DHCP/PBR/WARP, Cron, or AdGuard writes were attempted. `dry_run=true` and `auto_benchmark=false` remain the defaults and the only approved configuration.
