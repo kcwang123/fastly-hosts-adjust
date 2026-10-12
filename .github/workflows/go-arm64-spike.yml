@@ -59,3 +59,27 @@ jobs:
           file /tmp/fastly-local-health-arm64
           stat -c 'arm64_local_health_binary_bytes=%s' /tmp/fastly-local-health-arm64
           test "$(stat -c %s /tmp/fastly-local-health-arm64)" -lt 10485760
+      - name: Record immutable source and artifact checksums
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          mkdir -p /tmp/fastly-preflight
+          cp /tmp/fastly-readonly-arm64 /tmp/fastly-local-health-arm64 /tmp/fastly-preflight/
+          cd /tmp/fastly-preflight
+          sha256sum fastly-readonly-arm64 fastly-local-health-arm64 > SHA256SUMS
+          printf "source_commit=%s\n" "$SOURCE_SHA" > BUILD-IDENTITY.txt
+          go version >> BUILD-IDENTITY.txt
+          printf "build_flags=CGO_ENABLED=0 GOOS=linux GOARCH=arm64 GOARM64=v8.0 -trimpath -ldflags=-s,-w\n" >> BUILD-IDENTITY.txt
+          sha256sum -c SHA256SUMS
+          cat SHA256SUMS BUILD-IDENTITY.txt
+      - name: Upload offline-only ARM64 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-arm64-readonly-preflight-${{ github.sha }}
+          path: |
+            /tmp/fastly-preflight/fastly-readonly-arm64
+            /tmp/fastly-preflight/fastly-local-health-arm64
+            /tmp/fastly-preflight/SHA256SUMS
+            /tmp/fastly-preflight/BUILD-IDENTITY.txt
+          retention-days: 7
