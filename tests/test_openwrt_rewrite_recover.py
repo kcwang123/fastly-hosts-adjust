@@ -21,7 +21,7 @@ class API:
 class RecoveryTests(unittest.TestCase):
     def fixture(self,path,before,owned,desired):
         registry=Path(path)/"ownership.json"; snapshot=Path(path)/"snapshot.json"
-        snapshot.write_text(json.dumps({"version":1,"before":before,"ownership_before":owned,"desired":desired}))
+        snapshot.write_text(json.dumps({"version":1,"phase":"applying","before":before,"ownership_before":owned,"desired":desired}))
         snapshot.chmod(0o600)
         if owned:
             registry.write_text(json.dumps(owned)); registry.chmod(0o600)
