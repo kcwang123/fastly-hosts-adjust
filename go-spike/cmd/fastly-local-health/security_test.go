@@ -16,3 +16,14 @@ func TestStateLockSerializes(t *testing.T){
  wg.Wait()
  if count!=4{t.Fatalf("lost serialized updates: %d",count)}
 }
+
+func TestStateLockRejectsUntrustedDirectory(t *testing.T){
+ dir:=t.TempDir()
+ path:=filepath.Join(dir,"state")
+ if err:=os.Chmod(dir,0777);err!=nil{t.Fatal(err)}
+ if _,err:=lockedState(path,func()(string,error){return "unexpected",nil});err==nil{t.Fatal("world-writable parent accepted")}
+ if err:=os.Chmod(dir,0700);err!=nil{t.Fatal(err)}
+ alias:=path+".lock"
+ if err:=os.Symlink(filepath.Join(dir,"target"),alias);err!=nil{t.Fatal(err)}
+ if _,err:=lockedState(path,func()(string,error){return "unexpected",nil});err==nil{t.Fatal("lock symlink accepted")}
+}
