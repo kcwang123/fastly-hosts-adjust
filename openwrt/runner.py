@@ -100,29 +100,8 @@ def benchmark_due_with_config(settings, state, scan_path, now, config_path, exec
         if outcome.returncode != 0:
             raise RuntimeError("benchmark subprocess failed")
         bundle = json.loads(dest.read_text(encoding="utf-8"))
-        if not isinstance(bundle, dict) or set(bundle) != {"evidence", "evaluation", "diagnostics", "dry_run"}:
-            raise ValueError("benchmark output missing diagnostics")
-        if bundle["dry_run"] is not True:
-            raise ValueError("benchmark must remain dry-run")
-        evidence = bundle["evidence"]
-        diagnostics = bundle["diagnostics"]
-        if not isinstance(diagnostics, dict) or set(diagnostics) != {"cv_percent", "cache_state", "etag"}:
-            raise ValueError("malformed benchmark diagnostics")
-        import math
-        cvs = diagnostics["cv_percent"]
-        if (not isinstance(cvs, dict)
-            or set(cvs) != {"baseline_mbps", "candidate_mbps"}
-            or any(type(value) not in (int, float) or not math.isfinite(value)
-                   or value < 0 or value > settings.max_sample_cv_percent
-                   for value in cvs.values())
-            or diagnostics["cache_state"] not in ("HIT", "MISS", "UNKNOWN")
-            or (diagnostics["etag"] is not None and not isinstance(diagnostics["etag"], str))):
-            raise ValueError("untrusted benchmark diagnostics")
-        verified = check_evidence(evidence, max_bytes=settings.max_benchmark_bytes,
-                                  min_improvement_percent=settings.min_improvement_percent,
-                                  minimum_rounds=settings.benchmark_rounds)
-        if bundle["evaluation"] != verified:
-            raise ValueError("benchmark evaluation mismatch")
+        from benchmark_v3 import verify
+        verified = verify(bundle, settings)
         outputs.append(verified)
     if sum(x["measured_bytes"] for x in outputs) > settings.max_benchmark_bytes:
         raise ValueError("aggregate benchmark exceeded configured limit")
