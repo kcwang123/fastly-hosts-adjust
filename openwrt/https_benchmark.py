@@ -98,9 +98,10 @@ def download(domain, ip, limit, connect_timeout, read_timeout, deadline=None):
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError("benchmark deadline exceeded")
         cache = response.getheader("X-Cache", "").upper()
-        return {"bytes": count, "mbps": count * 8 / duration / 1_000_000,
+        return {"bytes": count, "duration_seconds": duration, "mbps": count * 8 / duration / 1_000_000,
                 "status": response.status, "tls_verified": True,
                 "etag": response.getheader("ETag"),
+                "content_range": content_range, "content_length": int(length) if length is not None else None,
                 "cache_state": cache if cache in ("HIT", "MISS") else "UNKNOWN"}
     finally:
         if tls is not None:
@@ -120,6 +121,7 @@ def benchmark(domain, baseline_ip, candidate_ip, settings, *, sampler=download):
     statuses = []
     etags = []
     cache_states = []
+    observations = []
     # Alternate pair order across rounds to reduce systematic bias.
     for round_no in range(settings.benchmark_rounds):
         labels = ("baseline", "candidate") if round_no % 2 == 0 else ("candidate", "baseline")
@@ -147,6 +149,13 @@ def benchmark(domain, baseline_ip, candidate_ip, settings, *, sampler=download):
             if result.get("tls_verified") is not True or result.get("status") not in (200, 206):
                 raise ValueError("TLS or HTTP verification failed")
             samples[label + "_mbps"].append(result["mbps"])
+            if sampler is download:
+                observations.append({"round":round_no,"label":label,"domain":domain,"ip":ip,
+                  "sni_domain":domain,"tls_verified":True,"status":result["status"],
+                  "etag":result["etag"],"cache_state":result["cache_state"],
+                  "content_range":result["content_range"],"content_length":result["content_length"],
+                  "bytes":result["bytes"],"duration_seconds":result["duration_seconds"],
+                  "mbps":result["mbps"]})
             statuses.append(result["status"])
             etags.append(result.get("etag"))
             cache_states.append(result.get("cache_state", "UNKNOWN"))
@@ -169,7 +178,8 @@ def benchmark(domain, baseline_ip, candidate_ip, settings, *, sampler=download):
     validated = check_evidence(raw, max_bytes=settings.max_benchmark_bytes,
                                min_improvement_percent=settings.min_improvement_percent,
                                minimum_rounds=settings.benchmark_rounds)
-    return {"evidence": raw, "evaluation": validated, "dry_run": True,
+    return {"schema_version": 3 if sampler is download else 2,
+            "samples": observations, "evidence": raw, "evaluation": validated, "dry_run": True,
             "diagnostics": {"cv_percent": stability, "cache_state": cache_states[0],
                             "etag": etags[0]}}
 
@@ -192,6 +202,8 @@ def main(argv=None):
             raise ValueError("invalid per-target budget")
         settings = replace(settings, max_benchmark_bytes=args.max_bytes)
     output = benchmark(args.domain, args.baseline_ip, args.candidate_ip, settings)
+    from benchmark_v3 import verify
+    verify(output, settings)
     Path(args.output).write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
     return 0
 
