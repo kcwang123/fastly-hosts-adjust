@@ -32,25 +32,21 @@ class EntryTests(unittest.TestCase):
     def test_explicit_apply_requires_disable_dryrun(self):
         with tempfile.TemporaryDirectory() as p:
             cfg=self.env(p);api=FakeAPI()
-            with self.assertRaisesRegex(ValueError,"dry_run"):
+            with self.assertRaisesRegex(ValueError,"lacks atomic CAS"):
                 mod.execute(cfg,api,desired={D:A},mode="apply")
-    def test_apply_and_restore_under_same_lock(self):
+    def test_write_paths_permanently_blocked(self):
         with tempfile.TemporaryDirectory() as p:
             cfg=self.env(p,write=True);api=FakeAPI()
-            mod.execute(cfg,api,desired={D:A},mode="apply")
-            self.assertEqual(api.data[D],A)
-            self.assertFalse((Path(cfg.ownership_registry_path).parent/"transaction.lock").exists())
-            snap=Path(cfg.transaction_snapshot_path)
-            snap.write_text(json.dumps({"version":1,"phase":"applying","before":{D:A},"ownership_before":{D:A},
-                                        "desired":{D:B}}));snap.chmod(0o600)
-            api.data[D]=B
-            result=mod.execute(cfg,api,mode="recover")
-            self.assertEqual(result["restored"],1)
-            self.assertEqual(api.data[D],A)
+            with self.assertRaisesRegex(ValueError,"lacks atomic CAS"):
+                mod.execute(cfg,api,desired={D:A},mode="apply")
+            with self.assertRaisesRegex(ValueError,"lacks atomic CAS"):
+                mod.execute(cfg,api,mode="recover")
+            self.assertFalse(api.data)
+
     def test_pending_journal_blocks_apply(self):
         with tempfile.TemporaryDirectory() as p:
             cfg=self.env(p,write=True);api=FakeAPI()
             snap=Path(cfg.transaction_snapshot_path);snap.write_text("{}");snap.chmod(0o600)
-            with self.assertRaisesRegex(ValueError,"pending"):
+            with self.assertRaisesRegex(ValueError,"lacks atomic CAS"):
                 mod.execute(cfg,api,desired={D:A},mode="apply")
 if __name__=="__main__":unittest.main()
