@@ -41,7 +41,7 @@ class LocalTLSTests(unittest.TestCase):
                     conn,_=listener.accept()
                     with server.wrap_socket(conn,server_side=True) as tls:
                         tls.recv(4096)
-                        tls.sendall(b"HTTP/1.1 206 Partial Content\\r\\nContent-Length: 32\\r\\n"
+                        tls.sendall(b"HTTP/1.1 206 Partial Content\\r\\nContent-Length: 32\\r\\nContent-Range: bytes 0-255/256\\r\\n"
                                     b"Connection: close\\r\\n\\r\\n"+b"x"*32)
                 finally:
                     listener.close()
@@ -78,7 +78,7 @@ class LocalTLSTests(unittest.TestCase):
                         request=secure.recv(4096)
                         observed.append(request)
                         data=b"x"*256
-                        secure.sendall(b"HTTP/1.1 206 Partial Content\r\nContent-Length: 256\r\n"
+                        secure.sendall(b"HTTP/1.1 206 Partial Content\r\nContent-Length: 256\r\nContent-Range: bytes 0-255/256\r\n"
                                        b"Connection: close\r\n\r\n"+data)
                 finally:
                     listener.close()
