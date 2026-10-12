@@ -1,0 +1,33 @@
+name: Go ARM64 read-only spike
+on:
+  push:
+    branches: [spike/go-arm64-readonly]
+    paths: ["go-spike/**", ".github/workflows/go-arm64-spike.yml"]
+  pull_request:
+    paths: ["go-spike/**", ".github/workflows/go-arm64-spike.yml"]
+permissions:
+  contents: read
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go-spike/go.mod
+      - name: Minimal offline unit tests
+        working-directory: go-spike
+        run: GOPROXY=off go test ./...
+      - name: Cross-compile for Cortex-A53
+        working-directory: go-spike
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: arm64
+          GOARM64: v8.0
+          GOPROXY: "off"
+        run: |
+          go build -trimpath -ldflags="-s -w" -o /tmp/fastly-readonly-arm64 ./cmd/fastly-readonly
+          file /tmp/fastly-readonly-arm64
+          stat -c 'arm64_binary_bytes=%s' /tmp/fastly-readonly-arm64
+          test "$(stat -c %s /tmp/fastly-readonly-arm64)" -lt 10485760
