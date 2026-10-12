@@ -14,6 +14,10 @@ class Settings:
     retry_delay_seconds: int = 15
     lock_stale_seconds: int = 1800
     max_benchmark_bytes: int = 360000000
+    benchmark_rounds: int = 3
+    benchmark_sample_bytes: int = 262144
+    benchmark_workers: int = 1
+    benchmark_read_timeout_seconds: float = 5.0
     min_improvement_percent: float = 15.0
     failure_threshold: int = 2
     ownership_registry_path: str = "/etc/fastly-optimizer/ownership.json"
@@ -37,12 +41,14 @@ class Settings:
         obj = cls(**payload)
         for key in ("health_interval_hours", "benchmark_interval_hours", "process_timeout_seconds",
                     "retry_count", "retry_delay_seconds", "lock_stale_seconds",
-                    "max_benchmark_bytes", "failure_threshold"):
+                    "max_benchmark_bytes", "benchmark_rounds", "benchmark_sample_bytes",
+                    "benchmark_workers", "failure_threshold"):
             value = getattr(obj, key)
             minimum = 0 if key in ("retry_count", "retry_delay_seconds") else 1
             if type(value) is not int or value < minimum:
                 raise ValueError(key + " must be an integer >= " + str(minimum))
-        for key in ("connect_timeout_seconds", "api_timeout_seconds", "min_improvement_percent"):
+        for key in ("connect_timeout_seconds", "api_timeout_seconds",
+                    "benchmark_read_timeout_seconds", "min_improvement_percent"):
             value = getattr(obj, key)
             if type(value) not in (float, int) or not (0 < value <= (100 if key == "min_improvement_percent" else 300)):
                 raise ValueError("invalid " + key)
@@ -52,6 +58,10 @@ class Settings:
                 raise ValueError("unsafe state path: " + key)
         if obj.ownership_registry_path == obj.transaction_snapshot_path:
             raise ValueError("transaction state paths must differ")
+        if not 3 <= obj.benchmark_rounds <= 20 or not 1 <= obj.benchmark_workers <= 4:
+            raise ValueError("unsupported benchmark workload")
+        if obj.benchmark_sample_bytes > obj.max_benchmark_bytes:
+            raise ValueError("sample exceeds total benchmark budget")
         if type(obj.dry_run) is not bool:
             raise ValueError("dry_run must be boolean")
         if obj.benchmark_interval_hours < obj.health_interval_hours:
