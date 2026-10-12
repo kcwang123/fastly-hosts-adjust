@@ -35,6 +35,22 @@ def verify_private_file(path):
         raise ValueError("transaction state must be a private regular file")
 
 
+def sync_directory(directory):
+    """Durably commit rename/unlink metadata when filesystem supports it."""
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    fd = os.open(str(directory), flags)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def durable_unlink(path):
+    path = Path(path)
+    path.unlink()
+    sync_directory(path.parent)
+
+
 def atomic_save(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -47,6 +63,7 @@ def atomic_save(path, value):
             os.fsync(f.fileno())
         os.chmod(temp, 0o600)
         os.replace(temp, path)
+        sync_directory(path.parent)
     finally:
         if temp.exists():
             temp.unlink()
@@ -124,6 +141,9 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
             snapshot["phase"] = "applying"
             snapshot["last_intent"] = {"domain": domain, "old": old, "target": target}
             atomic_save(snapshot_path, snapshot)
+            observed = current_map(api.list()).get(domain)
+            if observed != old:
+                raise RuntimeError("concurrent DNS rewrite modification: " + domain)
             if old is not None:
                 api.delete(domain, old)
             api.add(domain, target)
@@ -134,7 +154,7 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
         snapshot["phase"] = "committing"
         atomic_save(snapshot_path, snapshot)
         atomic_save(registry_path, updated)
-        snapshot_path.unlink()
+        durable_unlink(snapshot_path)
         return {"dry_run": False, "updated": len(operations)}
     except Exception as original:
         problems = []
@@ -152,6 +172,8 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
             except Exception as e:
                 problems.append(str(e))
         if not problems:
-            snapshot_path.unlink()
+            # Restore original registry if commit happened before a later exception.
+            atomic_save(registry_path, ownership)
+            durable_unlink(snapshot_path)
         raise RuntimeError("transaction failed; " + ("rollback incomplete: " + "; ".join(problems)
                            if problems else "rollback completed")) from original
