@@ -26,6 +26,7 @@ class Settings:
     trusted_baselines: dict = None
     benchmark_read_timeout_seconds: float = 5.0
     min_improvement_percent: float = 15.0
+    max_sample_cv_percent: float = 35.0
     failure_threshold: int = 2
     ownership_registry_path: str = "/etc/fastly-optimizer/ownership.json"
     transaction_snapshot_path: str = "/etc/fastly-optimizer/pending-transaction.json"
@@ -87,7 +88,7 @@ class Settings:
             if type(value) is not int or value < minimum:
                 raise ValueError(key + " must be an integer >= " + str(minimum))
         for key in ("connect_timeout_seconds", "api_timeout_seconds",
-                    "benchmark_read_timeout_seconds", "min_improvement_percent"):
+                    "benchmark_read_timeout_seconds", "min_improvement_percent", "max_sample_cv_percent"):
             value = getattr(obj, key)
             if type(value) not in (float, int) or not (0 < value <= (100 if key == "min_improvement_percent" else 300)):
                 raise ValueError("invalid " + key)
