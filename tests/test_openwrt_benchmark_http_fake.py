@@ -33,6 +33,17 @@ class FakeServerTests(unittest.TestCase):
         request=tls.sendall.call_args.args[0]
         self.assertIn(b"Range: bytes=0-999",request)
         self.assertIn(b"Host: raw.githubusercontent.com",request)
+    @patch.object(mod.http.client,"HTTPResponse")
+    @patch.object(mod.ssl,"create_default_context")
+    @patch.object(mod.socket,"create_connection")
+    def test_tiny_file_rejected(self,connect,context,response):
+        tls=MagicMock()
+        context.return_value.wrap_socket.return_value=tls
+        instance=response.return_value
+        instance.status=200
+        instance.read.side_effect=[b"tiny",b""]
+        with self.assertRaisesRegex(ValueError,"too small"):
+            mod.download("raw.githubusercontent.com","151.101.1.133",4096,2,3)
     @patch.object(mod.socket,"create_connection",side_effect=TimeoutError("timeout"))
     def test_connect_timeout_aborts(self,connect):
         with self.assertRaises(TimeoutError):
