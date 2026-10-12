@@ -8,9 +8,21 @@ from pathlib import Path
 from adguard_api import AdGuardAPI
 from adguard_plan import ALLOWED, plan, normalize
 from settings import Settings
+from speed_contract import check_evidence
 
 
-def candidate_preview(scan, existing):
+def candidate_preview(scan, existing, settings=None):
+    if isinstance(scan, dict) and scan.get("schema_version") == 2:
+        if settings is None:
+            raise ValueError("speed evidence requires validated settings")
+        evidence = check_evidence(scan, max_bytes=settings.max_benchmark_bytes,
+                                  min_improvement_percent=settings.min_improvement_percent)
+        return {"dry_run": True, "safe_to_apply": False,
+                "evidence": "speed_validated_preview", "speed": evidence,
+                "current_managed_domain_rewrites": [
+                    {"domain": r["domain"], "answer": r["answer"]} for r in existing
+                    if isinstance(r, dict) and r.get("domain") in ALLOWED]}
+
     if not isinstance(scan, dict) or scan.get("schema_version") != 1:
         raise ValueError("unsupported scanner contract")
     if scan.get("safe_to_apply") is not False or scan.get("evidence") != "latency_only":
@@ -53,7 +65,7 @@ def main(argv=None):
         raise ValueError("AdGuard credentials missing")
     scan = json.loads(Path(args.scan_json).read_text(encoding="utf-8"))
     api = AdGuardAPI(args.adguard_url, user, password, cfg.api_timeout_seconds)
-    print(json.dumps(candidate_preview(scan, api.list()), indent=2, sort_keys=True))
+    print(json.dumps(candidate_preview(scan, api.list(), cfg), indent=2, sort_keys=True))
     return 0
 
 
