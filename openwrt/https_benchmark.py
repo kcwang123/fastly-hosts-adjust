@@ -73,14 +73,14 @@ def download(domain, ip, limit, connect_timeout, read_timeout, deadline=None):
             raise ValueError("missing Content-Range")
         import re
         match = re.fullmatch(r"bytes 0-(\d+)/(\d+|\*)", content_range.strip())
-        if not match or int(match.group(1)) != limit - 1:
+        if not match or int(match.group(1)) != limit - 1 or (match.group(2) != "*" and int(match.group(2)) < limit):
             raise ValueError("unexpected Content-Range")
         length = response.getheader("Content-Length")
         if length is not None and (not length.isdecimal() or int(length) != limit):
             raise ValueError("Content-Length mismatch")
-        if response.getheader("Cache-Control", "").lower().find("no-store") >= 0:
+        if "no-store" in response.getheader("Cache-Control", "").lower():
             raise ValueError("no-store response unsuitable for CDN benchmark")
-        # A server may ignore Range. Never read past the reserved budget.
+        # A server may lie about total length. Never read past the reserved budget.
         while count < limit:
             if deadline is not None:
                 remaining = deadline - time.monotonic()
