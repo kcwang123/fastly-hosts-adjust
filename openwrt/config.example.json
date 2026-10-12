@@ -1,0 +1,33 @@
+{
+  "health_interval_hours": 3,
+  "benchmark_interval_hours": 24,
+  "connect_timeout_seconds": 3,
+  "api_timeout_seconds": 8,
+  "process_timeout_seconds": 900,
+  "retry_count": 2,
+  "retry_delay_seconds": 15,
+  "lock_stale_seconds": 1800,
+  "max_benchmark_bytes": 360000000,
+  "min_improvement_percent": 15,
+  "failure_threshold": 2,
+  "dry_run": true,
+  "enabled_services": [
+    "github",
+    "x",
+    "twitch"
+  ],
+  "ownership_registry_path": "/etc/fastly-optimizer/ownership.json",
+  "transaction_snapshot_path": "/etc/fastly-optimizer/pending-transaction.json",
+  "benchmark_rounds": 3,
+  "benchmark_sample_bytes": 262144,
+  "benchmark_workers": 1,
+  "benchmark_read_timeout_seconds": 5,
+  "benchmark_deadline_seconds": 120,
+  "benchmark_targets": [],
+  "auto_benchmark": false,
+  "trusted_baselines": {},
+  "max_scan_age_seconds": 14400,
+  "egress_evidence_path": "",
+  "max_egress_age_seconds": 3600,
+  "max_sample_cv_percent": 35
+}
