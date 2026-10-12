@@ -140,10 +140,16 @@ def main(argv=None):
     parser.add_argument("--baseline-ip", required=True)
     parser.add_argument("--candidate-ip", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--max-bytes", type=int)
     args = parser.parse_args(argv)
     settings = Settings.load(args.config)
     if not settings.dry_run:
         raise ValueError("benchmark requires dry_run=true")
+    if args.max_bytes is not None:
+        from dataclasses import replace
+        if not 1 <= args.max_bytes <= settings.max_benchmark_bytes:
+            raise ValueError("invalid per-target budget")
+        settings = replace(settings, max_benchmark_bytes=args.max_bytes)
     output = benchmark(args.domain, args.baseline_ip, args.candidate_ip, settings)
     Path(args.output).write_text(json.dumps(output["evidence"], indent=2) + "\n", encoding="utf-8")
     return 0
