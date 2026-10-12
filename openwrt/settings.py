@@ -20,6 +20,7 @@ class Settings:
     benchmark_deadline_seconds: int = 120
     benchmark_targets: tuple = ()
     auto_benchmark: bool = False
+    egress_verified: bool = False
     max_scan_age_seconds: int = 14400
     trusted_baselines: dict = None
     benchmark_read_timeout_seconds: float = 5.0
@@ -103,6 +104,10 @@ class Settings:
             raise ValueError("parallel benchmark workers are not implemented; use 1")
         if obj.benchmark_deadline_seconds > obj.process_timeout_seconds:
             raise ValueError("benchmark deadline exceeds process timeout")
+        if type(obj.egress_verified) is not bool:
+            raise ValueError("egress_verified must be boolean")
+        if obj.auto_benchmark and not obj.egress_verified:
+            raise ValueError("PBR/WARP egress must be externally verified before automatic benchmarking")
         if type(obj.auto_benchmark) is not bool:
             raise ValueError("auto_benchmark must be boolean")
         if obj.auto_benchmark and (not obj.dry_run or not obj.trusted_baselines):
