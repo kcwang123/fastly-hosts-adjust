@@ -16,6 +16,9 @@ def recover(api, registry_path, snapshot_path, *, dry_run=True):
     snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     if not isinstance(snapshot, dict) or snapshot.get("version") != 1:
         raise ValueError("unsupported recovery snapshot")
+    phase = snapshot.get("phase", "unknown")
+    if phase not in ("prepared", "applying", "committing"):
+        raise ValueError("unrecognized recovery journal phase")
     before = snapshot.get("before")
     ownership = snapshot.get("ownership_before")
     desired = snapshot.get("desired")
@@ -38,6 +41,11 @@ def recover(api, registry_path, snapshot_path, *, dry_run=True):
     if registry_data != ownership and registry_data != permitted_registry:
         raise ValueError("registry conflicts with interrupted transaction")
     current = current_map(api.list())
+    # 'prepared' journal predates every local API write. Changes here are
+    # necessarily external or ambiguous; never take ownership of them.
+    if phase == "prepared" and any(current.get(domain) != before.get(domain)
+                                    for domain in desired):
+        raise ValueError("prepared journal conflicts with external writer")
     actions = []
     for domain, wanted in sorted(desired.items()):
         old = before.get(domain)
