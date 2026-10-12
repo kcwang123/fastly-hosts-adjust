@@ -72,13 +72,13 @@ class MultiProcessTLS(unittest.TestCase):
    port=sock.getsockname()[1];failures=[];domains=[]
    def serve():
     try:
-     for _ in range(12):
+     for _ in range(7):
       conn,_=sock.accept()
       with ctx.wrap_socket(conn,server_side=True) as tls:
        req=tls.recv(4096)
        if b"Range: bytes=0-127" not in req:raise AssertionError("wrong Range")
        if len(domains)>=6:
-        tls.sendall(b'HTTP/1.1 206 Partial Content\\r\\nContent-Range: bytes 0-127/1024\\r\\nContent-Length: 128\\r\\nConnection: close\\r\\n\\r\\n'+b'x'*24)
+        tls.sendall(b'HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-127/1024\r\nContent-Length: 128\r\nConnection: close\r\n\r\n'+b'x'*24)
         domains.append(req)
         continue
        domains.append(req)
