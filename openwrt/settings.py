@@ -19,6 +19,8 @@ class Settings:
     benchmark_workers: int = 1
     benchmark_deadline_seconds: int = 120
     benchmark_targets: tuple = ()
+    auto_benchmark: bool = False
+    trusted_baselines: dict = None
     benchmark_read_timeout_seconds: float = 5.0
     min_improvement_percent: float = 15.0
     failure_threshold: int = 2
@@ -60,6 +62,18 @@ class Settings:
                     raise ValueError("baseline equals candidate")
                 clean.append(target)
             payload["benchmark_targets"] = tuple(clean)
+        if "trusted_baselines" in payload:
+            from ipaddress import ip_address
+            from tls_verify import SERVICES
+            baselines = payload["trusted_baselines"]
+            if not isinstance(baselines, dict):
+                raise ValueError("trusted_baselines must be a mapping")
+            for domain, ipstr in baselines.items():
+                if domain not in SERVICES or not isinstance(ipstr, str):
+                    raise ValueError("unapproved baseline")
+                ip = ip_address(ipstr)
+                if ip.version != 4 or not ip.is_global:
+                    raise ValueError("baseline must be public IPv4")
         obj = cls(**payload)
         for key in ("health_interval_hours", "benchmark_interval_hours", "process_timeout_seconds",
                     "retry_count", "retry_delay_seconds", "lock_stale_seconds",
@@ -88,6 +102,10 @@ class Settings:
             raise ValueError("parallel benchmark workers are not implemented; use 1")
         if obj.benchmark_deadline_seconds > obj.process_timeout_seconds:
             raise ValueError("benchmark deadline exceeds process timeout")
+        if type(obj.auto_benchmark) is not bool:
+            raise ValueError("auto_benchmark must be boolean")
+        if obj.auto_benchmark and (not obj.dry_run or not obj.trusted_baselines):
+            raise ValueError("automatic benchmarks require dry_run and explicit trusted baselines")
         if type(obj.dry_run) is not bool:
             raise ValueError("dry_run must be boolean")
         if obj.benchmark_interval_hours < obj.health_interval_hours:
