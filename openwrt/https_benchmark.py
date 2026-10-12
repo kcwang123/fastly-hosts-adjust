@@ -74,8 +74,10 @@ def download(domain, ip, limit, connect_timeout, read_timeout, deadline=None):
                 break
             count += len(chunk)
         duration = max(time.monotonic() - started, 0.000001)
-        if count == 0:
-            raise ValueError("empty download")
+        if count < limit:
+            raise ValueError("benchmark object too small for requested sample")
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError("benchmark deadline exceeded")
         return {"bytes": count, "mbps": count * 8 / duration / 1_000_000,
                 "status": response.status, "tls_verified": True}
     finally:
