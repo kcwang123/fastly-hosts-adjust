@@ -69,7 +69,7 @@ class TxTests(unittest.TestCase):
             self.assertEqual(api.rows[D],B)
     def test_existing_snapshot_blocks_reentry(self):
         with tempfile.TemporaryDirectory() as d:
-            api=API();reg,snap=self.paths(d);snap.write_text("{}")
+            api=API();reg,snap=self.paths(d);snap.write_text("{}");snap.chmod(0o600)
             with self.assertRaisesRegex(ValueError,"snapshot already exists"):
                 m.reconcile(api,{D:A},reg,snap,dry_run=False)
 if __name__=="__main__":unittest.main()
