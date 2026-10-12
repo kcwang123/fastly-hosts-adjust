@@ -56,24 +56,9 @@ def choose_mode(settings, state, now):
 def benchmark_due_with_config(settings, state, scan_path, now, config_path, executor=subprocess.run):
     """Run configured trusted targets; never mark success on partial failure."""
     if settings.auto_benchmark:
-        from auto_targets import select
-        from adguard_api import AdGuardAPI
-        scan_file = Path(scan_path)
-        age = time.time() - scan_file.stat().st_mtime
-        if age < 0 or age > settings.max_scan_age_seconds:
-            raise ValueError("scanner observation is stale")
-        scan = json.loads(scan_file.read_text(encoding="utf-8"))
-        credentials = (os.environ.get("ADGUARD_USER"), os.environ.get("ADGUARD_PASSWORD"))
-        if not all(credentials):
-            raise ValueError("AdGuard credentials required for auto benchmarking")
-        api = AdGuardAPI("http://127.0.0.1:3000", *credentials, settings.api_timeout_seconds)
-        targets = select(scan, settings.trusted_baselines, api.list())
-        from egress_contract import read_and_validate
-        read_and_validate(settings.egress_evidence_path, targets=targets,
-                          max_age_seconds=settings.max_egress_age_seconds)
-        # Even syntactically valid v1 JSON is self-asserted. It has no
-        # cryptographic binding to independently observed target-specific paths.
-        raise RuntimeError("automatic benchmarking blocked: trusted per-target egress attestation unavailable")
+        # The route/egress attestation design is untrusted. Reject without
+        # importing AdGuard clients or reading credentials or forged evidence.
+        raise RuntimeError("automatic benchmarking blocked: trusted target-specific egress unavailable")
 
     outputs = []
     overall_deadline = time.monotonic() + settings.process_timeout_seconds
