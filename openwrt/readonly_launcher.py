@@ -19,7 +19,7 @@ def main(argv=None):
         raise ValueError("all launcher paths required")
     # -I ignores PYTHONPATH, PYTHONHOME and user site packages, but it also
     # omits the script directory. Explicitly insert only this reviewed bundle.
-    script="import runpy,sys;sys.path.insert(0,sys.argv[1]);sys.argv=['runner.py']+sys.argv[2:];runpy.run_path(sys.path[0]+'/runner.py',run_name='__main__')"
+    script="import runpy,sys;sys.path.insert(0,sys.argv[1]);from build_readonly_bundle import verify;verify(sys.path[0]);sys.argv=['runner.py']+sys.argv[2:];runpy.run_path(sys.path[0]+'/runner.py',run_name='__main__')"
     env={"PATH":os.defpath,"LANG":"C","LC_ALL":"C","PYTHONDONTWRITEBYTECODE":"1"}
     completed=subprocess.run(
         [sys.executable,"-I","-B","-c",script,str(root),
