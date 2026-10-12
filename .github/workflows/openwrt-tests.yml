@@ -22,5 +22,5 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m unittest discover -s tests -p 'test_openwrt_*.py' -v
-      - run: python -m py_compile openwrt/adguard_plan.py openwrt/settings.py openwrt/scanner_export.py openwrt/runner.py openwrt/tls_verify.py
+      - run: python -m py_compile openwrt/adguard_plan.py openwrt/settings.py openwrt/scanner_export.py openwrt/runner.py openwrt/tls_verify.py openwrt/rewrite_tx.py
       - run: sh -n openwrt/preflight.sh openwrt/run.sh
