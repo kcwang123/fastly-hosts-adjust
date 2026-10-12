@@ -28,6 +28,18 @@ func TestScannerBoundaries(t *testing.T){
  ctx,cancel:=context.WithCancel(context.Background());cancel()
  if _,err:=Scan(ctx,[]Target{{Service:"github",IP:"8.8.8.8"}},success);err==nil{t.Fatal("canceled context accepted")}
 }
+func TestBoundedRetries(t *testing.T){
+ attempts:=0
+ flaky:=func(_ context.Context,_,_ string)(string,time.Duration,error){
+  attempts++
+  if attempts<3{return "",0,errors.New("temporary failure")}
+  return "UNKNOWN",time.Millisecond,nil
+ }
+ targets:=[]Target{{Service:"github",IP:"8.8.8.8"}}
+ if _,err:=ScanWithRetries(context.Background(),targets,flaky,2);err!=nil||attempts!=3{t.Fatalf("retry failure: %d %v",attempts,err)}
+ attempts=0
+ if _,err:=ScanWithRetries(context.Background(),targets,flaky,1);err==nil||attempts!=2{t.Fatalf("retry limit ignored: %d %v",attempts,err)}
+}
 func TestInjectedTLSHead(t *testing.T){
  private,err:=ecdsa.GenerateKey(elliptic.P256(),rand.Reader);if err!=nil{t.Fatal(err)}
  template:=&x509.Certificate{SerialNumber:big.NewInt(42),DNSNames:[]string{"raw.githubusercontent.com"},NotBefore:time.Now().Add(-time.Hour),NotAfter:time.Now().Add(time.Hour),KeyUsage:x509.KeyUsageDigitalSignature,ExtKeyUsage:[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
