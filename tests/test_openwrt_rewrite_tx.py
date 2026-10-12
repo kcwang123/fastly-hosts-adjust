@@ -67,6 +67,22 @@ class TxTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"drift"):
                 m.reconcile(api,{D:A},reg,snap,dry_run=False)
             self.assertEqual(api.rows[D],B)
+    def test_write_intent_is_durable_before_api_change(self):
+        with tempfile.TemporaryDirectory() as d:
+            reg,snap=self.paths(d)
+            class InspectAPI(API):
+                def add(self, domain, value):
+                    import json
+                    journal=json.loads(snap.read_text())
+                    self.assert_journal(journal,domain,value)
+                    super().add(domain,value)
+                def assert_journal(self, journal, domain, value):
+                    assert journal["phase"] == "applying"
+                    assert journal["last_intent"]["domain"] == domain
+                    assert journal["last_intent"]["target"] == value
+            api=InspectAPI()
+            m.reconcile(api,{D:A},reg,snap,dry_run=False)
+            self.assertFalse(snap.exists())
     def test_existing_snapshot_blocks_reentry(self):
         with tempfile.TemporaryDirectory() as d:
             api=API();reg,snap=self.paths(d);snap.write_text("{}");snap.chmod(0o600)
