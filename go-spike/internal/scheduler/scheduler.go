@@ -5,7 +5,6 @@ import (
  "errors"
  "os"
  "path/filepath"
- "net"
  "context"
  "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/strictjson"
  "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scanner"
@@ -67,8 +66,7 @@ func ValidateScan(data []byte)error{
  if s.SchemaVersion!=1||s.Source!="fastly-hosts-adjust"||s.Evidence!="latency_only"||s.SafeToApply||s.Candidates==nil||s.ScannedBlocks<0||s.SkippedBlocks<0||s.ScannedBlocks!=len(s.Candidates){return errors.New("untrusted scan")}
  for _,c:=range s.Candidates {
    if c.Service!="github"&&c.Service!="x"&&c.Service!="twitch"{return errors.New("unapproved service")}
-   ip:=net.ParseIP(c.IP)
-   if ip==nil||ip.To4()==nil||ip.IsLoopback()||ip.IsPrivate()||ip.IsUnspecified()||ip.IsMulticast()||ip.IsLinkLocalUnicast(){return errors.New("invalid candidate IP")}
+   if !scanner.PublicIPv4(c.IP){return errors.New("invalid candidate IP")}
    if c.Pop==""||c.LatencyMS<=0{return errors.New("invalid candidate observation")}
  }
  return nil
