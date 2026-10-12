@@ -83,6 +83,34 @@ class TxTests(unittest.TestCase):
             api=InspectAPI()
             m.reconcile(api,{D:A},reg,snap,dry_run=False)
             self.assertFalse(snap.exists())
+    def test_api_commits_then_loses_response_rolls_back(self):
+        with tempfile.TemporaryDirectory() as d:
+            reg,snap=self.paths(d)
+            class LostReplyAPI(API):
+                def add(self,domain,value):
+                    super().add(domain,value)
+                    if not getattr(self,"lost",False):
+                        self.lost=True
+                        raise TimeoutError("response lost after write")
+            api=LostReplyAPI()
+            with self.assertRaisesRegex(RuntimeError,"rollback completed"):
+                m.reconcile(api,{D:A},reg,snap,dry_run=False)
+            self.assertNotIn(D,api.rows)
+            self.assertFalse(reg.exists())
+    def test_rollback_failure_keeps_journal(self):
+        with tempfile.TemporaryDirectory() as d:
+            reg,snap=self.paths(d)
+            class FailRollbackAPI(API):
+                def add(self,domain,value):
+                    super().add(domain,value)
+                    raise OSError("lost response")
+                def delete(self,domain,value):
+                    raise OSError("rollback blocked")
+            api=FailRollbackAPI()
+            with self.assertRaisesRegex(RuntimeError,"rollback incomplete"):
+                m.reconcile(api,{D:A},reg,snap,dry_run=False)
+            self.assertTrue(snap.exists())
+            self.assertEqual(api.rows[D],A)
     def test_existing_snapshot_blocks_reentry(self):
         with tempfile.TemporaryDirectory() as d:
             api=API();reg,snap=self.paths(d);snap.write_text("{}");snap.chmod(0o600)
