@@ -47,8 +47,9 @@ secrets or private key contents into logs or tickets.
 ## Runtime package checks — local workstation/CI only
 
 ```sh
-python openwrt/build_readonly_bundle.py --source openwrt --output /tmp/fastly-readonly-review
-python -c 'import sys;sys.path.insert(0,"openwrt");from build_readonly_bundle import verify;print(verify("/tmp/fastly-readonly-review"))'
+review_parent="$(mktemp -d)"
+python openwrt/build_readonly_bundle.py --source openwrt --output "$review_parent/fastly-readonly-review"
+python -c 'import sys;sys.path.insert(0,"openwrt");from build_readonly_bundle import verify;print(verify(sys.argv[1]))' "$review_parent/fastly-readonly-review"
 ```
 
 No automated installer is approved. Only `readonly_launcher.py` is a supported
