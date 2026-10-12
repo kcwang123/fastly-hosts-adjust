@@ -22,5 +22,5 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m unittest discover -s tests -p 'test_openwrt_*.py' -v
-      - run: python -m py_compile openwrt/adguard_plan.py openwrt/settings.py openwrt/scanner_export.py openwrt/runner.py openwrt/tls_verify.py openwrt/rewrite_tx.py openwrt/rewrite_recover.py openwrt/adguard_api.py openwrt/dryrun_pipeline.py openwrt/tx_safety.py openwrt/transaction_cli.py openwrt/speed_contract.py openwrt/https_benchmark.py openwrt/route_proposal.py openwrt/auto_targets.py openwrt/egress_contract.py openwrt/route_observer.py
+      - run: python -m py_compile openwrt/adguard_plan.py openwrt/settings.py openwrt/scanner_export.py openwrt/runner.py openwrt/tls_verify.py openwrt/rewrite_tx.py openwrt/rewrite_recover.py openwrt/adguard_api.py openwrt/dryrun_pipeline.py openwrt/tx_safety.py openwrt/transaction_cli.py openwrt/speed_contract.py openwrt/https_benchmark.py openwrt/route_proposal.py openwrt/auto_targets.py openwrt/egress_contract.py openwrt/route_observer.py openwrt/egress_reflector.py
       - run: sh -n openwrt/preflight.sh openwrt/run.sh openwrt/deployment_preflight.sh
