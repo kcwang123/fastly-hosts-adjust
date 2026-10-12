@@ -41,7 +41,7 @@ class EntryTests(unittest.TestCase):
             self.assertEqual(api.data[D],A)
             self.assertFalse((Path(cfg.ownership_registry_path).parent/"transaction.lock").exists())
             snap=Path(cfg.transaction_snapshot_path)
-            snap.write_text(json.dumps({"version":1,"before":{D:A},"ownership_before":{D:A},
+            snap.write_text(json.dumps({"version":1,"phase":"applying","before":{D:A},"ownership_before":{D:A},
                                         "desired":{D:B}}));snap.chmod(0o600)
             api.data[D]=B
             result=mod.execute(cfg,api,mode="recover")
