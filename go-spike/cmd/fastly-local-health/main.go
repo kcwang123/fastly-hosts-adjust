@@ -2,27 +2,22 @@
 // All sockets are physically dialed to loopback. It never probes configured public IPs.
 package main
 import(
- "bytes"
  "context"
  "crypto/x509"
- "encoding/json"
  "errors"
  "flag"
  "fmt"
- "io"
  "net"
  "os"
  "path/filepath"
  "time"
  "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scanner"
  "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scheduler"
+ "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/strictjson"
 )
 func loadTargets(b []byte)([]scanner.Target,error){
- d:=json.NewDecoder(bytes.NewReader(b));d.DisallowUnknownFields()
  var t []scanner.Target
- if err:=d.Decode(&t);err!=nil{return nil,err}
- var leftover any
- if err:=d.Decode(&leftover);err!=io.EOF{return nil,errors.New("trailing targets JSON")}
+ if err:=strictjson.Decode(b,&t);err!=nil{return nil,err}
  if len(t)==0||len(t)>20{return nil,errors.New("target count outside 1..20")}
  for _,x:=range t{if x.Service==""||x.IP==""{return nil,errors.New("incomplete target")}}
  return t,nil
