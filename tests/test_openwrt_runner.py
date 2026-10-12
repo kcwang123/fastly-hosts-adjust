@@ -18,7 +18,7 @@ class RunnerTests(unittest.TestCase):
     def test_new_install_blocks_benchmark_until_implemented(self):
         with tempfile.TemporaryDirectory() as d:
             result = runner.run_once(Settings(), Path(d)/"state.json", Path(d)/"scan.json", 100000)
-            self.assertEqual(result["status"], "pending")
+            self.assertEqual(result["status"], "error")
             self.assertFalse((Path(d)/"state.json").exists())
 
     def test_health_runs_only_after_benchmark_timestamp(self):
