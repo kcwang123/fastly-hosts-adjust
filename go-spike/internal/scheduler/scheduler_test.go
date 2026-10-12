@@ -1,7 +1,7 @@
 package scheduler
 import ("os";"path/filepath";"bytes";"testing")
 var config=[]byte(`{"dry_run":true,"auto_benchmark":false,"health_interval_hours":3,"benchmark_interval_hours":24}`)
-var scan=[]byte(`{"schema_version":1,"evidence":"latency_only","safe_to_apply":false,"candidates":[]}`)
+var scan=[]byte(`{"schema_version":1,"source":"fastly-hosts-adjust","evidence":"latency_only","safe_to_apply":false,"scanned_blocks":2,"skipped_blocks":0,"candidates":[]}`)
 func TestModesAndSafety(t *testing.T){
  tests:=[]struct{name string;old,scan []byte;now int64;result string;write bool}{
  {"first",nil,scan,100000,"ok",true},
