@@ -9,6 +9,7 @@ from adguard_api import AdGuardAPI
 from adguard_plan import ALLOWED, plan, normalize
 from settings import Settings
 from speed_contract import check_evidence
+from route_proposal import propose
 
 
 def candidate_preview(scan, existing, settings=None):
@@ -42,7 +43,14 @@ def candidate_preview(scan, existing, settings=None):
                            "pop": row.get("pop"), "latency_ms": row.get("latency_ms")})
     if not isinstance(existing, list):
         raise ValueError("invalid rewrite inventory")
+    proposals = []
+    try:
+        proposals = propose(scan)["targets"]
+    except (OSError, ValueError) as error:
+        # Resolver failure must not grant write access or abort viewing evidence.
+        proposals = []
     return {"dry_run": True, "safe_to_apply": False,
+            "benchmark_proposals": proposals,
             "evidence": "latency_only", "candidate_count": len(candidates),
             "candidates": candidates,
             "current_managed_domain_rewrites": [
