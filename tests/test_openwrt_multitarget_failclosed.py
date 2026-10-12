@@ -11,7 +11,25 @@ from settings import Settings
 from speed_contract import check_evidence
 
 def bundle(evidence):
-    return {"evidence":evidence,"evaluation":check_evidence(evidence,max_bytes=1200,min_improvement_percent=15,minimum_rounds=3),"diagnostics":{"cv_percent":{"baseline_mbps":0.0,"candidate_mbps":0.0},"cache_state":"UNKNOWN","etag":None},"dry_run":True}
+    row=evidence["measurements"][0]
+    candidate=row["ip"]
+    baseline="151.101.2.214" if row["domain"]=="static-cdn.jtvnw.net" else "151.101.2.133"
+    samples=[]
+    for round_no in range(3):
+        for label in (("baseline","candidate") if round_no%2==0 else ("candidate","baseline")):
+            speed=row[label+"_mbps"][round_no]
+            samples.append({"round":round_no,"label":label,"domain":row["domain"],
+              "ip":baseline if label=="baseline" else candidate,
+              "sni_domain":row["domain"],"tls_verified":True,"status":206,
+              "etag":None,"cache_state":"UNKNOWN","content_range":"bytes 0-99/200",
+              "content_length":100,"bytes":100,"duration_seconds":800/1000000/speed,
+              "mbps":speed})
+    return {"schema_version":3,"samples":samples,"evidence":evidence,
+      "evaluation":check_evidence(evidence,max_bytes=1200,
+        min_improvement_percent=15,minimum_rounds=3),
+      "diagnostics":{"cv_percent":{"baseline_mbps":0.0,"candidate_mbps":0.0},
+        "cache_state":"UNKNOWN","etag":None},"dry_run":True}
+
 
 T1={"domain":"raw.githubusercontent.com","baseline_ip":"151.101.2.133","candidate_ip":"151.101.1.133"}
 T2={"domain":"static-cdn.jtvnw.net","baseline_ip":"151.101.2.214","candidate_ip":"151.101.1.214"}
