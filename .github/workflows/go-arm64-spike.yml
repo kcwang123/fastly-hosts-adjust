@@ -18,6 +18,9 @@ jobs:
       - name: Minimal offline unit tests
         working-directory: go-spike
         run: GOPROXY=off go test ./...
+      - name: Minimal race and concurrent state tests
+        working-directory: go-spike
+        run: GOPROXY=off go test -race ./cmd/fastly-local-health ./internal/scheduler ./internal/scanner
       - name: Host CLI RSS smoke (not ARM64 device measurement)
         working-directory: go-spike
         env:
