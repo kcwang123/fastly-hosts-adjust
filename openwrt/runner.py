@@ -10,6 +10,7 @@ import time
 
 from settings import Settings
 from speed_contract import check_evidence
+from dataclasses import replace
 
 
 def read_state(path):
@@ -41,7 +42,7 @@ def atomic_json(path, value):
 def choose_mode(settings, state, now):
     due = settings.due(now, state.get("last_health_epoch"),
                        state.get("last_benchmark_epoch"))
-    if due["benchmark"] and settings.benchmark_targets:
+    if due["benchmark"] and (settings.benchmark_targets or settings.auto_benchmark):
         return "benchmark"
     if due["health"]:
         return "health"
@@ -52,6 +53,16 @@ def choose_mode(settings, state, now):
 
 def benchmark_due_with_config(settings, state, scan_path, now, config_path, executor=subprocess.run):
     """Run configured trusted targets; never mark success on partial failure."""
+    if settings.auto_benchmark:
+        from auto_targets import select
+        from adguard_api import AdGuardAPI
+        credentials = (os.environ.get("ADGUARD_USER"), os.environ.get("ADGUARD_PASSWORD"))
+        if not all(credentials):
+            raise ValueError("AdGuard credentials required for auto benchmarking")
+        scan = json.loads(Path(scan_path).read_text(encoding="utf-8"))
+        api = AdGuardAPI("http://127.0.0.1:3000", *credentials, settings.api_timeout_seconds)
+        targets = select(scan, settings.trusted_baselines, api.list())
+        settings = replace(settings, benchmark_targets=tuple(targets))
     outputs = []
     overall_deadline = time.monotonic() + settings.process_timeout_seconds
     count = len(settings.benchmark_targets)
