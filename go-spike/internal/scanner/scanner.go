@@ -5,7 +5,6 @@ import (
  "encoding/json"
  "errors"
  "math"
- "net"
  "time"
 )
 
@@ -29,8 +28,7 @@ func ScanWithRetries(ctx context.Context,targets []Target,probe Probe,retries in
  out:=Output{SchemaVersion:1,Source:"fastly-hosts-adjust",Evidence:"latency_only",Candidates:[]Candidate{}}
  for _,t:=range targets {
   domain,ok:=services[t.Service];if !ok{return nil,errors.New("unapproved service")}
-  ip:=net.ParseIP(t.IP)
-  if ip==nil||ip.To4()==nil||ip.IsPrivate()||ip.IsLoopback()||ip.IsUnspecified()||ip.IsMulticast()||ip.IsLinkLocalUnicast(){return nil,errors.New("unapproved address")}
+  if !PublicIPv4(t.IP){return nil,errors.New("unapproved address")}
   // Fail the whole health observation on any failed or timed out probe.
   var pop string
   var elapsed time.Duration
