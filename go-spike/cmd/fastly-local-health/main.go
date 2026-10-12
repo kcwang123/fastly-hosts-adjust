@@ -64,5 +64,5 @@ func main(){
  if *config==""||*state==""||*targets==""||*ca==""||*addr==""{fmt.Fprintln(os.Stderr,"all flags required");os.Exit(2)}
  status,err:=run(*config,*state,*targets,*ca,*addr,*now)
  if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}
- fmt.Printf("{\"status\":%q,\"safe_to_apply\":false,\"network_executed\":false,\"loopback_test_only\":true}\n",status)
+ fmt.Printf("{\"status\":%q,\"safe_to_apply\":false,\"public_network_executed\":false,\"loopback_tls_executed\":true}\n",status)
 }
