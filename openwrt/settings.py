@@ -20,7 +20,8 @@ class Settings:
     benchmark_deadline_seconds: int = 120
     benchmark_targets: tuple = ()
     auto_benchmark: bool = False
-    egress_verified: bool = False
+    egress_evidence_path: str = ""
+    max_egress_age_seconds: int = 3600
     max_scan_age_seconds: int = 14400
     trusted_baselines: dict = None
     benchmark_read_timeout_seconds: float = 5.0
@@ -80,7 +81,7 @@ class Settings:
         for key in ("health_interval_hours", "benchmark_interval_hours", "process_timeout_seconds",
                     "retry_count", "retry_delay_seconds", "lock_stale_seconds",
                     "max_benchmark_bytes", "benchmark_rounds", "benchmark_sample_bytes",
-                    "benchmark_workers", "benchmark_deadline_seconds", "max_scan_age_seconds", "failure_threshold"):
+                    "benchmark_workers", "benchmark_deadline_seconds", "max_scan_age_seconds", "max_egress_age_seconds", "failure_threshold"):
             value = getattr(obj, key)
             minimum = 0 if key in ("retry_count", "retry_delay_seconds") else 1
             if type(value) is not int or value < minimum:
@@ -104,10 +105,10 @@ class Settings:
             raise ValueError("parallel benchmark workers are not implemented; use 1")
         if obj.benchmark_deadline_seconds > obj.process_timeout_seconds:
             raise ValueError("benchmark deadline exceeds process timeout")
-        if type(obj.egress_verified) is not bool:
-            raise ValueError("egress_verified must be boolean")
-        if obj.auto_benchmark and not obj.egress_verified:
-            raise ValueError("PBR/WARP egress must be externally verified before automatic benchmarking")
+        if type(obj.egress_evidence_path) is not str:
+            raise ValueError("egress_evidence_path must be a string")
+        if obj.auto_benchmark and not obj.egress_evidence_path.startswith("/etc/fastly-optimizer/"):
+            raise ValueError("auto benchmarking requires persistent egress evidence path")
         if type(obj.auto_benchmark) is not bool:
             raise ValueError("auto_benchmark must be boolean")
         if obj.auto_benchmark and (not obj.dry_run or not obj.trusted_baselines):
