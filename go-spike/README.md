@@ -16,9 +16,16 @@ Independent branch `spike/go-arm64-readonly`, based on Python Draft PR #1 at
   --scan-input <scan.json> --now <epoch>`. Uses validated scanner schema v1
   diagnostics only; rejects malformed/unsafe evidence before atomically updating
   `last_health_epoch`. Skip and benchmark-pending outcomes never modify state.
-  **No real scanner is implemented or invoked**; inputs are pre-created fixtures.
+  The CLI still uses pre-created fixtures, not an on-device network scan.
   Config is an intentionally narrow subset of Python Settings, not drop-in
   compatibility. A missing scan fixture cannot be reported as a successful scan.
+- Library `internal/scanner`: bounded allowlisted target/IP diagnostics with
+  injected probe, TLS 1.2+ hostname-verified HEAD against approved paths, and
+  Scanner v1 JSON output. `scheduler.RunHealth` integrates Scanner health
+  observations, with at most two retries per target and no state update when
+  any target fails. It is exercised exclusively using localhost TLS and
+  injected dialers; not exposed through the production CLI. This is **not**
+  parity with Python's full candidate discovery or real-world POP validation.
 - Library `internal/probe`: approved TLS hostname allowlist and paths from
   Python `tls_verify.py`; bounded HTTP 206 Range, Content-Range,
   Content-Length, ETag/X-Cache observation and transport hostname validation.
