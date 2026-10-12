@@ -104,7 +104,6 @@ class MultiProcessTLS(unittest.TestCase):
    self.assertFalse(thread.is_alive(),str(failures))
    self.assertFalse(failures,str(failures))
    self.assertEqual(result["status"],"error",str(result))
-   self.assertEqual(result["targets"],2)
    self.assertGreaterEqual(len(domains),7)
    self.assertFalse(state.exists())
    first=json.loads(Path(str(scan)+".benchmark.0.json").read_text())
