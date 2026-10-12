@@ -10,6 +10,7 @@ READ_ONLY_MODULES = (
     "speed_contract.py", "benchmark_v3.py", "https_benchmark.py",
     "auto_targets.py", "egress_contract.py", "egress_reflector.py",
     "route_observer.py", "route_proposal.py", "readonly_launcher.py",
+    "build_readonly_bundle.py", "readonly_bundle_manifest.py",
 )
 FORBIDDEN = frozenset(("rewrite_tx.py", "rewrite_recover.py",
                        "transaction_cli.py", "tx_safety.py"))
