@@ -28,5 +28,6 @@
   "trusted_baselines": {},
   "max_scan_age_seconds": 14400,
   "egress_evidence_path": "",
-  "max_egress_age_seconds": 3600
+  "max_egress_age_seconds": 3600,
+  "max_sample_cv_percent": 35
 }
