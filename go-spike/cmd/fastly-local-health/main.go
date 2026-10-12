@@ -23,10 +23,15 @@ func loadTargets(b []byte)([]scanner.Target,error){
  return t,nil
 }
 func run(config,state,targets,ca,addr string,now int64)(string,error){
+ return lockedState(state,func()(string,error){return runLocked(config,state,targets,ca,addr,now)})
+}
+func runLocked(config,state,targets,ca,addr string,now int64)(string,error){
  host,_,err:=net.SplitHostPort(addr);if err!=nil{return "",err}
  parsed:=net.ParseIP(host)
  if parsed==nil||!parsed.IsLoopback(){return "",errors.New("only numeric loopback TLS listener permitted")}
  if now<=0{return "",errors.New("explicit epoch required")}
+ for _,path:=range []string{config,targets,ca}{if err:=safeFile(path,false);err!=nil{return "",err}}
+ if err:=safeFile(state,true);err!=nil{return "",err}
  cf,err:=os.ReadFile(config);if err!=nil{return "",err}
  old,err:=os.ReadFile(state);if os.IsNotExist(err){old=nil}else if err!=nil{return "",err}
  raw,err:=os.ReadFile(targets);if err!=nil{return "",err}
