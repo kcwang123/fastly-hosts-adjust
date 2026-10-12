@@ -123,3 +123,25 @@ reviewed. The certificate store must not be overridden with an untrusted
 `SSL_CERT_FILE` or similar variable.
 
 No real device commands have been run; this is a checklist only.
+
+## Parent-directory replacement gate (2026-10-12 review)
+
+The bundle verifier now rejects a symlinked immediate parent or an immediate
+parent writable by group/other users. The CI artifact is built beneath a private
+temporary parent to exercise this invariant. This is a narrowly scoped defence
+against package-directory replacement, not proof of immutable deployment.
+
+For a real device, inspect the complete ancestor chain as well as ACLs and
+ownership independently. **PASS** requires a separate trusted deployment owner,
+a runtime principal without permission to alter the package *or rename any
+ancestor*, and an acceptable device-specific system Python/CA trust chain.
+**FAIL** if an untrusted runtime can replace the package, modify its verifier
+or tamper with interpreter/module roots. **UNKNOWN** where identities, access
+rights, filesystem mount behaviour or CA provenance are unobserved. These
+conditions remain UNKNOWN; no Router inspection was performed.
+
+Docker, containers and IPK are **not prerequisites** for this read-only
+prototype: introduce them only if a later concrete deployment requirement
+cannot be satisfied by a protected directory and restricted process identity.
+The current scope does not justify additional packaging machinery. Continue to
+block all DNS writes because AdGuard has no atomic CAS.
