@@ -24,7 +24,7 @@ class IntegrationTests(unittest.TestCase):
                 def list(self): return []
             with patch.dict(os.environ,{"ADGUARD_USER":"test","ADGUARD_PASSWORD":"test"}):
                 with patch("adguard_api.AdGuardAPI",AGH):
-                    with self.assertRaises(ValueError):
+                    with self.assertRaisesRegex(RuntimeError,"egress unavailable"):
                         runner.benchmark_due_with_config(settings,{},scan,100,"config.json",
                             lambda *args,**kw:self.fail("benchmark must not launch"))
     def test_egress_failure_does_not_advance_state(self):
