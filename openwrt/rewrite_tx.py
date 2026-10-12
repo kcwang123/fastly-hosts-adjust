@@ -7,6 +7,7 @@ A sidecar ownership registry is necessary because AdGuard rewrites have no owner
 import ipaddress
 import json
 import os
+import stat
 from pathlib import Path
 
 from adguard_plan import ALLOWED
@@ -23,9 +24,21 @@ def validate(desired):
             raise ValueError("DNS rewrite must be a public IPv4")
 
 
+def verify_private_file(path):
+    path = Path(path)
+    if not path.exists():
+        return
+    if path.is_symlink():
+        raise ValueError("refuse symlink transaction state")
+    info = path.stat()
+    if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077:
+        raise ValueError("transaction state must be a private regular file")
+
+
 def atomic_save(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    verify_private_file(path)
     temp = path.with_name(path.name + ".tmp." + str(os.getpid()))
     try:
         with open(temp, "x", encoding="utf-8") as f:
@@ -83,6 +96,8 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
     """
     validate(desired)
     registry_path, snapshot_path = Path(registry_path), Path(snapshot_path)
+    verify_private_file(registry_path)
+    verify_private_file(snapshot_path)
     ownership = (json.loads(registry_path.read_text(encoding="utf-8"))
                  if registry_path.exists() else {})
     if not isinstance(ownership, dict):
@@ -102,14 +117,12 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
         return {"dry_run": True, "actions": [
             {"domain": d, "from": old, "to": target} for d, old, target in operations]}
     prepare(api, desired, ownership, snapshot_path)
-    changed = []
     try:
         updated = dict(ownership)
         for domain, old, target in operations:
             if old is not None:
                 api.delete(domain, old)
             api.add(domain, target)
-            changed.append((domain, old, target))
             updated[domain] = target
         live = current_map(api.list())
         if any(live.get(domain) != target for domain, target in desired.items()):
