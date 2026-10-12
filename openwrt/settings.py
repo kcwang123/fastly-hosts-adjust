@@ -16,6 +16,8 @@ class Settings:
     max_benchmark_bytes: int = 360000000
     min_improvement_percent: float = 15.0
     failure_threshold: int = 2
+    ownership_registry_path: str = "/etc/fastly-optimizer/ownership.json"
+    transaction_snapshot_path: str = "/etc/fastly-optimizer/pending-transaction.json"
     dry_run: bool = True
     enabled_services: tuple = ("github", "x", "twitch")
 
@@ -44,6 +46,12 @@ class Settings:
             value = getattr(obj, key)
             if type(value) not in (float, int) or not (0 < value <= (100 if key == "min_improvement_percent" else 300)):
                 raise ValueError("invalid " + key)
+        for key in ("ownership_registry_path", "transaction_snapshot_path"):
+            value = getattr(obj, key)
+            if not isinstance(value, str) or not value.startswith("/etc/fastly-optimizer/") or ".." in value:
+                raise ValueError("unsafe state path: " + key)
+        if obj.ownership_registry_path == obj.transaction_snapshot_path:
+            raise ValueError("transaction state paths must differ")
         if type(obj.dry_run) is not bool:
             raise ValueError("dry_run must be boolean")
         if obj.benchmark_interval_hours < obj.health_interval_hours:
