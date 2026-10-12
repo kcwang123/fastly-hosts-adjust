@@ -68,6 +68,9 @@ def benchmark_due_with_config(settings, state, scan_path, now, config_path, exec
             raise ValueError("AdGuard credentials required for auto benchmarking")
         api = AdGuardAPI("http://127.0.0.1:3000", *credentials, settings.api_timeout_seconds)
         targets = select(scan, settings.trusted_baselines, api.list())
+        from egress_contract import read_and_validate
+        read_and_validate(settings.egress_evidence_path, targets=targets,
+                          max_age_seconds=settings.max_egress_age_seconds)
         settings = replace(settings, benchmark_targets=tuple(targets))
     outputs = []
     overall_deadline = time.monotonic() + settings.process_timeout_seconds
