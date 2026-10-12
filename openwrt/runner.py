@@ -57,6 +57,7 @@ def run_once(settings, state_path, scan_path, now, executor=subprocess.run):
         # Fail safely instead of pretending a latency scan is a full benchmark.
         return {"status": "pending", "reason": "full_benchmark_not_implemented"}
     # Only a latency scan; no changes to any DNS setting.
+    Path(scan_path).parent.mkdir(parents=True, exist_ok=True)
     cmd = [sys.executable, str(Path(__file__).with_name("scanner_export.py")),
            "--services", *settings.enabled_services,
            "--output", str(scan_path)]
