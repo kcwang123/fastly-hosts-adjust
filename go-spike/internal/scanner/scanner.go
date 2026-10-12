@@ -22,7 +22,9 @@ type Output struct {
  Candidates []Candidate `json:"candidates"`
 }
 type Probe func(context.Context,string,string)(string,time.Duration,error)
-func Scan(ctx context.Context,targets []Target,probe Probe)([]byte,error){
+func Scan(ctx context.Context,targets []Target,probe Probe)([]byte,error){return ScanWithRetries(ctx,targets,probe,0)}
+func ScanWithRetries(ctx context.Context,targets []Target,probe Probe,retries int)([]byte,error){
+ if retries<0||retries>2{return nil,errors.New("invalid retry count")}
  if len(targets)==0||len(targets)>20||probe==nil{return nil,errors.New("bounded targets and injected probe required")}
  out:=Output{SchemaVersion:1,Source:"fastly-hosts-adjust",Evidence:"latency_only",Candidates:[]Candidate{}}
  for _,t:=range targets {
@@ -30,10 +32,18 @@ func Scan(ctx context.Context,targets []Target,probe Probe)([]byte,error){
   ip:=net.ParseIP(t.IP)
   if ip==nil||ip.To4()==nil||ip.IsPrivate()||ip.IsLoopback()||ip.IsUnspecified()||ip.IsMulticast()||ip.IsLinkLocalUnicast(){return nil,errors.New("unapproved address")}
   // Fail the whole health observation on any failed or timed out probe.
-  bounded,cancel:=context.WithTimeout(ctx,3*time.Second)
-  pop,elapsed,err:=probe(bounded,domain,t.IP)
-  timeoutErr:=bounded.Err()
-  cancel()
+  var pop string
+  var elapsed time.Duration
+  var err error
+  var timeoutErr error
+  for attempt:=0;attempt<=retries;attempt++{
+   if ctx.Err()!=nil{return nil,ctx.Err()}
+   bounded,cancel:=context.WithTimeout(ctx,3*time.Second)
+   pop,elapsed,err=probe(bounded,domain,t.IP)
+   timeoutErr=bounded.Err()
+   cancel()
+   if err==nil&&timeoutErr==nil&&pop!=""&&elapsed>0&&elapsed<=3*time.Second{break}
+  }
   if err!=nil||timeoutErr!=nil||pop==""||elapsed<=0||elapsed>3*time.Second{return nil,errors.New("probe failed")}
   if ctx.Err()!=nil{return nil,ctx.Err()}
   ms:=math.Round(elapsed.Seconds()*1e5)/100
