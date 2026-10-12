@@ -11,18 +11,24 @@ import (
  "time"
 )
 
+var healthPaths=map[string]string{
+ "raw.githubusercontent.com":"/github/gitignore/main/README.md",
+ "pbs.twimg.com":"/profile_images/1683325380441128960/yRsRRjGO_400x400.jpg",
+ "static-cdn.jtvnw.net":"/jtv_user_pictures/xarth/404_user_70x70.png",
+}
 // TLSHeadProbe validates pinned IP against the original hostname. No redirects
 // and no proxy; dial must be explicitly injected by the caller.
 func TLSHeadProbe(roots *x509.CertPool,dial func(context.Context,string,string)(net.Conn,error)) Probe {
  return func(ctx context.Context,host,ip string)(string,time.Duration,error){
   if dial==nil{return "",0,errors.New("dialer not configured")}
+  path,ok:=healthPaths[host];if !ok{return "",0,errors.New("unapproved hostname")}
   start:=time.Now()
   tr:=&http.Transport{Proxy:nil,DisableKeepAlives:true,DisableCompression:true,
    TLSClientConfig:&tls.Config{MinVersion:tls.VersionTLS12,ServerName:host,RootCAs:roots},
    DialContext:func(c context.Context,network,_ string)(net.Conn,error){return dial(c,network,net.JoinHostPort(ip,"443"))}}
   defer tr.CloseIdleConnections()
   client:=&http.Client{Transport:tr,CheckRedirect:func(*http.Request,[]*http.Request)error{return errors.New("redirect denied")}}
-  request,err:=http.NewRequestWithContext(ctx,http.MethodHead,"https://"+host+"/",nil)
+  request,err:=http.NewRequestWithContext(ctx,http.MethodHead,"https://"+host+path,nil)
   if err!=nil{return "",0,err}
   response,err:=client.Do(request)
   if err!=nil{return "",0,err}
