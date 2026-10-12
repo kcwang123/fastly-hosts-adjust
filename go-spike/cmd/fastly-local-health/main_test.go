@@ -31,8 +31,8 @@ func TestLocalHealthCLI(t *testing.T){
  state,e:=os.ReadFile(sp);if e!=nil||!strings.Contains(string(state),"last_health_epoch"){t.Fatalf("state: %q %v",state,e)}
  previous:=append([]byte(nil),state...)
  skipped,se:=run(cp,sp,tp,ca,srv.Listener.Addr().String(),10001)
- if se!=nil||skipped!="skipped"{t.Fatalf("expected skip without network: %s %v",skipped,se)}
- unchanged,_:=os.ReadFile(sp);if string(unchanged)!=string(previous){t.Fatal("skip modified state")}
+ if se!=nil||skipped!="pending"{t.Fatalf("expected benchmark_pending without network: %s %v",skipped,se)}
+ unchanged,_:=os.ReadFile(sp);if string(unchanged)!=string(previous){t.Fatal("pending modified state")}
  os.WriteFile(tp,[]byte(`[{"service":"x","ip":"8.8.8.8"}]`),0600)
  if _,e=run(cp,sp,tp,ca,srv.Listener.Addr().String(),30000);e==nil{t.Fatal("wrong hostname passed")}
  after,_:=os.ReadFile(sp);if string(after)!=string(previous){t.Fatal("failed TLS changed state")}
