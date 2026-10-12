@@ -8,6 +8,11 @@ from unittest.mock import Mock
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"openwrt"))
 import runner
 from settings import Settings
+from speed_contract import check_evidence
+
+def bundle(evidence):
+    return {"evidence":evidence,"evaluation":check_evidence(evidence,max_bytes=1200,min_improvement_percent=15,minimum_rounds=3),"diagnostics":{"cv_percent":{"baseline_mbps":0.0,"candidate_mbps":0.0},"cache_state":"UNKNOWN","etag":None},"dry_run":True}
+
 T1={"domain":"raw.githubusercontent.com","baseline_ip":"151.101.2.133","candidate_ip":"151.101.1.133"}
 T2={"domain":"static-cdn.jtvnw.net","baseline_ip":"151.101.2.214","candidate_ip":"151.101.1.214"}
 
@@ -26,7 +31,7 @@ class MultiTargetTests(unittest.TestCase):
    count=[0]
    def exec(cmd,**kw):
     i=count[0];count[0]+=1
-    Path(cmd[cmd.index("--output")+1]).write_text(json.dumps(document((T1,T2)[i],5 if i else 20)))
+    Path(cmd[cmd.index("--output")+1]).write_text(json.dumps(bundle(document((T1,T2)[i],5 if i else 20))))
     return Mock(returncode=0)
    result=runner.run_once(cfg,state,scan,10000,executor=exec,config_path="config.json")
    self.assertEqual(result["status"],"ok")
@@ -40,7 +45,7 @@ class MultiTargetTests(unittest.TestCase):
    def exec(cmd,**kw):
     i=count[0];count[0]+=1
     if i: raise TimeoutError("second target timed out")
-    Path(cmd[cmd.index("--output")+1]).write_text(json.dumps(document(T1,20)))
+    Path(cmd[cmd.index("--output")+1]).write_text(json.dumps(bundle(document(T1,20))))
     return Mock(returncode=0)
    outcome=runner.run_once(cfg,state,scan,10000,executor=exec,config_path="config.json")
    self.assertEqual(outcome["status"],"error")
