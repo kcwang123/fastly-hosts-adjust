@@ -73,3 +73,13 @@ As of 2026-10-12, `raw.githubusercontent.com/github/gitignore/main/README.md` se
 ## Transaction fault injection
 
 Added isolated API fixtures for a concurrent external writer before DNS mutation and for recovery when the live entry differs from both prior and desired values. Both fail closed; the journal is preserved for manual reconciliation. This is **not** proof of atomicity: AdGuard's delete/add sequence still lacks an API CAS operation, and a racing external change after our read remains possible. No production DNS write has been performed.
+
+## Schema v3 verification and compatibility (2026-10-12)
+
+Benchmark CLI now emits a v3 envelope with each measured round's label, domain/IP/SNI, TLS and HTTP status, ETag, X-Cache class, Content-Range, Content-Length, body bytes, elapsed seconds and Mbps. The Runner uses `benchmark_v3.verify` to **recompute** throughput, CV, content/cache consistency, sampled byte budget, target pairing and schema-v2-compatible `evaluation` rather than trusting diagnostic summaries. A legacy v2 object remains accepted by `speed_contract.check_evidence` only as a read-only historic report; **Runner rejects v2 for new success timestamps**.
+
+The local v3 record is still not independent proof of remote server identity, actual per-route public egress, or received body *content equivalence*: matching ETags depend on origin semantics and absence of validators remains inconclusive. A stable, large GitHub/Twitch CDN object is still NOT APPROVED. The certificate/SNI and header parser checks are necessary but insufficient to authorize DNS changes.
+
+## DNS recovery phase restrictions
+
+Recovery now accepts only the known `prepared`, `applying` and `committing` journal phases. An unexpected or absent phase is refused. Since no local DNS API write should have occurred in `prepared`, any live divergence from the prepared snapshot is treated as an external change and fails closed, preserving the journal. Tests cover the post-delete/pre-add crash and the external modification of a prepared journal. API delete/add still has no CAS guarantee, so production writes remain prohibited.
