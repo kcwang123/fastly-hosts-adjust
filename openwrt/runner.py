@@ -42,7 +42,7 @@ def atomic_json(path, value):
 def choose_mode(settings, state, now):
     due = settings.due(now, state.get("last_health_epoch"),
                        state.get("last_benchmark_epoch"))
-    if due["benchmark"] and settings.auto_benchmark and state.get("last_health_epoch") is None:
+    if due["health"] and state.get("last_health_epoch") is None:
         return "health"
     if due["benchmark"] and (settings.benchmark_targets or settings.auto_benchmark):
         return "benchmark"
