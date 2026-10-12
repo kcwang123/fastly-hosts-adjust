@@ -119,7 +119,6 @@ def run_once(settings, state_path, scan_path, now, executor=subprocess.run, conf
         try:
             result = benchmark_due_with_config(settings, state, scan_path, now, config_path, executor)
             state["last_benchmark_epoch"] = now
-            state["last_health_epoch"] = now
             atomic_json(state_path, state)
             return {"status": "ok", "mode": "benchmark", "targets": len(result["benchmarks"]),
                     "safe_to_apply": False}
