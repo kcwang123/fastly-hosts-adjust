@@ -10,7 +10,10 @@ spec=importlib.util.spec_from_file_location("bench_http_fake",root/"https_benchm
 mod=importlib.util.module_from_spec(spec);sys.modules[spec.name]=mod;spec.loader.exec_module(mod)
 
 class FakeHTTP:
-    status=200
+    status=206
+    def getheader(self, name, default=None):
+        if name == 'Content-Range': return 'bytes 0-999/1000'
+        return default
     def __init__(self, sock):
         self.sock=sock
         self.count=0
@@ -28,7 +31,7 @@ class FakeServerTests(unittest.TestCase):
         context.return_value.wrap_socket.return_value=tls
         result=mod.download("raw.githubusercontent.com","151.101.1.133",1000,2,3)
         self.assertEqual(result["bytes"],1000)
-        self.assertEqual(result["status"],200)
+        self.assertEqual(result["status"],206)
         self.assertEqual(context.return_value.wrap_socket.call_args.kwargs["server_hostname"],"raw.githubusercontent.com")
         request=tls.sendall.call_args.args[0]
         self.assertIn(b"Range: bytes=0-999",request)
@@ -40,7 +43,8 @@ class FakeServerTests(unittest.TestCase):
         tls=MagicMock()
         context.return_value.wrap_socket.return_value=tls
         instance=response.return_value
-        instance.status=200
+        instance.status=206
+        instance.getheader.side_effect=lambda name,default=None: "bytes 0-4095/4096" if name=="Content-Range" else default
         instance.read.side_effect=[b"tiny",b""]
         with self.assertRaisesRegex(ValueError,"too small"):
             mod.download("raw.githubusercontent.com","151.101.1.133",4096,2,3)
