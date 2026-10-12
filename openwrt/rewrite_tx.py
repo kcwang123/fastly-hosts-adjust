@@ -117,7 +117,7 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
     if dry_run:
         return {"dry_run": True, "actions": [
             {"domain": d, "from": old, "to": target} for d, old, target in operations]}
-    prepare(api, desired, ownership, snapshot_path)
+    snapshot = prepare(api, desired, ownership, snapshot_path)
     try:
         updated = dict(ownership)
         for domain, old, target in operations:
