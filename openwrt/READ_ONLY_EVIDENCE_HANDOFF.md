@@ -21,9 +21,15 @@ Before copying any output, remove credentials, tokens, private keys, secret URLs
 internal identifiers and unnecessary private addresses. Preserve enough context
 to assess the observation. Do not run anything without operator authorization.
 Never include `uci set`, service restart, Cron write, DNS rewrite, PBR/WARP
-configuration, or a benchmark against a public CDN.
+configuration, or a live public-CDN benchmark in this read-only session.
+Any future CDN object/egress acceptance evidence requires a **separately
+approved**, bounded verification plan; do not treat this form as authorization.
 
 ## Gate observations — fill one row per gate
+
+Observation status and release acceptance are separate fields: CI tests can be
+PASS while the corresponding real-device evidence stays UNKNOWN and release
+acceptance remains NOT ACCEPTED.
 
 Use **PASS** only for complete, independently reviewable observations that
 meet the applicable rule in `READ_ONLY_PREFLIGHT_CHECKLIST.md`. Use **FAIL**
@@ -44,8 +50,9 @@ release decision, not a claim that a test physically failed.
 | Per-target PBR/WARP public egress corroboration | UNKNOWN | TBD | TBD | Local routes alone insufficient |
 | AdGuard atomic CAS and conflict-safe transaction/recovery | UNKNOWN | TBD | TBD | Write feature permanently BLOCKED absent redesign |
 
-For public CDN and PBR/WARP evidence, record the hostname and exact object
-identity or destination pair, response time and independent egress attestation.
+If separately authorized public CDN or PBR/WARP evidence is later available,
+record the hostname and exact object identity or destination pair, observation
+time, method and independent egress attestation. Otherwise leave UNKNOWN.
 Do not interpret a loopback TLS test, cached local scan or `ip route` output
 as proof of a public CDN object or public exit.
 
