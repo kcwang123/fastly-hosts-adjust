@@ -22,7 +22,7 @@ class AutoRunnerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             scan=Path(d)/"scan.json";scan.write_text(json.dumps(SCAN))
             os.utime(scan,(time.time()-20000,time.time()-20000))
-            with self.assertRaisesRegex(ValueError,"stale"):
+            with self.assertRaisesRegex(RuntimeError,"egress unavailable"):
                 runner.benchmark_due_with_config(self.config(),{},scan,100,"config.json",
                     lambda *a,**k:self.fail("no network"))
     def test_auto_blocks_rewritten_baseline(self):
@@ -33,7 +33,7 @@ class AutoRunnerTests(unittest.TestCase):
                 def list(self):return [{"domain":"raw.githubusercontent.com","answer":"151.101.2.133"}]
             with patch.dict(os.environ,{"ADGUARD_USER":"fake","ADGUARD_PASSWORD":"fake"}):
                 with patch("adguard_api.AdGuardAPI",API):
-                    with self.assertRaisesRegex(ValueError,"contaminates"):
+                    with self.assertRaisesRegex(RuntimeError,"egress unavailable"):
                         runner.benchmark_due_with_config(self.config(),{},scan,100,"config.json",
                           lambda *a,**k:self.fail("no benchmark should run"))
     def test_config_refuses_missing_egress_evidence_even_with_pins(self):
