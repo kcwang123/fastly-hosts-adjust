@@ -10,7 +10,7 @@ if ! mkdir "$LOCK" 2>/dev/null; then
   exit 0
 fi
 trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT HUP INT TERM
-python3 /usr/lib/fastly-optimizer/runner.py \
+python3 /usr/lib/fastly-optimizer/readonly_launcher.py \
   --config "$BASE/config.json" \
   --state "$STATE/state.json" \
   --scan-output "$STATE/scan.json"
