@@ -53,6 +53,7 @@ def choose_mode(settings, state, now):
 def benchmark_due_with_config(settings, state, scan_path, now, config_path, executor=subprocess.run):
     """Run configured trusted targets; never mark success on partial failure."""
     outputs = []
+    overall_deadline = time.monotonic() + settings.process_timeout_seconds
     count = len(settings.benchmark_targets)
     per_target = settings.max_benchmark_bytes // count if count else 0
     if per_target < 2 * settings.benchmark_rounds * settings.benchmark_sample_bytes:
@@ -68,7 +69,10 @@ def benchmark_due_with_config(settings, state, scan_path, now, config_path, exec
                "--candidate-ip", target["candidate_ip"],
                "--output", str(dest), "--max-bytes", str(per_target)]
         # Run an isolated benchmark subprocess with an OS-enforced timeout.
-        outcome = executor(cmd, timeout=settings.process_timeout_seconds,
+        remaining = overall_deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(cmd, settings.process_timeout_seconds)
+        outcome = executor(cmd, timeout=remaining,
                            capture_output=True, text=True, check=False)
         if outcome.returncode != 0:
             raise RuntimeError("benchmark subprocess failed")
