@@ -67,3 +67,27 @@ environment cleaning and is unsupported.
 - Deployment and Cron: **NOT ACCEPTED**.
 
 Do not record PASS from missing evidence or from CI-only localhost tests.
+
+## Strict evidence grading — every field must be classified
+
+Use **PASS** only when the operator supplied a fresh, complete observation and
+it satisfies the exact documented invariant; **FAIL** when a supplied observation
+demonstrably violates an invariant; **UNKNOWN** when absent, stale, ambiguous,
+redacted beyond interpretation, or the command/tool is unavailable. Neither
+UNKNOWN nor FAIL authorizes installation, Cron, Benchmark or DNS modification.
+
+| Gate | PASS | FAIL | UNKNOWN |
+| --- | --- | --- | --- |
+| OS and Python | OpenWrt release, architecture, Python 3, standard ssl/http.client modules verified | Interpreter missing or essential module fails to import | No current OS/runtime output |
+| System TLS roots | Default CA path exists, readable, ownership and modification history acceptable to operator, verified hostname check enabled | CA absent, writable by untrusted user, or hostname verification disabled | CA origin or permissions not inspected |
+| Local DNS/DHCP | Listener evidence matches intended AdGuard :53, dnsmasq :54 and DHCP :67 without conflicts | Missing or conflicting listeners | Listener process ownership / port binding unconfirmed |
+| Storage | Persistent overlay has >=10 MiB free from contemporaneous `df -k /overlay` | Below 10 MiB | Storage not measured or device not mounted |
+| Runtime bundle | Exact SHA-256, symlink/file list and import check passes before launch in restricted launcher | Any mismatch or unexpected module | Only CI build verified; device artifact unexamined |
+| Target CDN | Both address pairs give verified 206 Range/Length, consistent ETag/cache and sufficient stable object | Content mismatch, truncated response or inconsistent metadata | No verified target-specific object/headers |
+| PBR/WARP | Independently corroborated public egress for each target destination on actual device | Observed public egress differs from required route | Only local route/rule observations available |
+| AdGuard atomic write | Atomic compare-and-swap/recovery design independently implemented and proven | Delete/Add race or external override demonstrated | No trusted CAS support; deployment decision remains BLOCKED |
+
+**Current device evidence for all device-dependent rows: UNKNOWN / NOT ACCEPTED.**
+No commands in this checklist have been executed against the router in this
+engineering session. The DNS write policy is BLOCKED even if a future report
+marks other gates PASS.
