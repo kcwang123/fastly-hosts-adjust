@@ -1,15 +1,21 @@
 {
   "health_interval_hours": 3,
   "benchmark_interval_hours": 24,
-  "connect_timeout_seconds": 3.0,
-  "api_timeout_seconds": 8.0,
+  "connect_timeout_seconds": 3,
+  "api_timeout_seconds": 8,
   "process_timeout_seconds": 900,
   "retry_count": 2,
   "retry_delay_seconds": 15,
   "lock_stale_seconds": 1800,
   "max_benchmark_bytes": 360000000,
-  "min_improvement_percent": 15.0,
+  "min_improvement_percent": 15,
   "failure_threshold": 2,
   "dry_run": true,
-  "enabled_services": ["github", "x", "twitch"]
+  "enabled_services": [
+    "github",
+    "x",
+    "twitch"
+  ],
+  "ownership_registry_path": "/etc/fastly-optimizer/ownership.json",
+  "transaction_snapshot_path": "/etc/fastly-optimizer/pending-transaction.json"
 }
