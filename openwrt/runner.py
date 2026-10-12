@@ -59,7 +59,11 @@ def benchmark_due_with_config(settings, state, scan_path, now, config_path, exec
         credentials = (os.environ.get("ADGUARD_USER"), os.environ.get("ADGUARD_PASSWORD"))
         if not all(credentials):
             raise ValueError("AdGuard credentials required for auto benchmarking")
-        scan = json.loads(Path(scan_path).read_text(encoding="utf-8"))
+        scan_file = Path(scan_path)
+        age = time.time() - scan_file.stat().st_mtime
+        if age < 0 or age > settings.max_scan_age_seconds:
+            raise ValueError("scanner observation is stale")
+        scan = json.loads(scan_file.read_text(encoding="utf-8"))
         api = AdGuardAPI("http://127.0.0.1:3000", *credentials, settings.api_timeout_seconds)
         targets = select(scan, settings.trusted_baselines, api.list())
         settings = replace(settings, benchmark_targets=tuple(targets))
