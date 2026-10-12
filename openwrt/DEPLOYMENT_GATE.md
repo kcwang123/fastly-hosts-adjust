@@ -59,3 +59,17 @@ Public search found historical records of other GitHub Raw ZIP files with Accept
 ## Transaction review limitation
 
 `rewrite_tx.py` records a durable snapshot and checks current values just before mutation, but AdGuard Home offers no atomic compare-and-swap. Between read and delete/add, an external actor may update a rewrite. Recovery uses phases and ownership checks, but ambiguous in-flight writes remain possible across process crash. Do not enable write mode until recovery's phase/intent semantics and external-writer interference are tested and understood; `dry_run=true` remains mandatory.
+
+## Persisted benchmark envelope (current)
+
+The benchmark CLI writes a read-only JSON envelope containing `evidence`, `evaluation`, `diagnostics` (CV, ETag and cache state), and `dry_run=true`. Runner checks that the envelope exists, that diagnostics have bounded values, and that the evaluation is consistent with the validated speed evidence. Evidence cannot authorize a DNS rewrite. An older raw schema-v2-only file fails closed rather than silently dropping diagnostics.
+
+This does not independently recompute CV or ETag parity from raw rounds: schema v2 contains only speed arrays, not per-sample response headers. A future v3 contract should carry all observations so Runner can recompute consistency instead of trusting diagnostic summaries. Files are local, unsigned diagnostics; absent/mixed origin Cache and ETag remain weak evidence.
+
+## Read-only object inspection
+
+As of 2026-10-12, `raw.githubusercontent.com/github/gitignore/main/README.md` serves a short text README and `static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png` serves a small avatar. These resources are unsuitable for the configured 262144-byte throughput sample. The read-only web fetch does not expose reproducible CDN-node-specific `Range`, `Content-Length`, `ETag`, or Cache HIT/MISS response headers. No alternate GitHub or Twitch object has been approved. Keep the benchmark source gate closed.
+
+## Transaction fault injection
+
+Added isolated API fixtures for a concurrent external writer before DNS mutation and for recovery when the live entry differs from both prior and desired values. Both fail closed; the journal is preserved for manual reconciliation. This is **not** proof of atomicity: AdGuard's delete/add sequence still lacks an API CAS operation, and a racing external change after our read remains possible. No production DNS write has been performed.
