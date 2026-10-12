@@ -50,7 +50,7 @@ class LocalTLSTests(unittest.TestCase):
             with patch.object(benchmark.socket,"create_connection",
                               side_effect=lambda addr,timeout:real_connect(("127.0.0.1",port),timeout)):
                 with patch.object(benchmark.ssl,"create_default_context",return_value=client):
-                    with self.assertRaisesRegex(ValueError,"too small"):
+                    with self.assertRaisesRegex(ValueError,"Content-Length mismatch|too small"):
                         benchmark.download("raw.githubusercontent.com","151.101.1.133",256,2,2)
             worker.join(3)
             self.assertFalse(worker.is_alive())
