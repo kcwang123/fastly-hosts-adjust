@@ -10,7 +10,15 @@ Independent branch `spike/go-arm64-readonly`, based on Python Draft PR #1 at
   `{"dry_run":true,"auto_benchmark":false}`. All other keys, missing fields
   and write-enabled configurations fail closed. It emits diagnostic
   `schema_version=1,status=validated_only,safe_to_apply=false,
-  network_executed=false` to stdout. It never writes files.
+  network_executed=false` to stdout. The basic validated-only CLI mode never writes files; the explicit offline
+  Scheduler fixture mode may update only the provided state path on success.
+- Offline Scheduler fixture mode: `--config <minimal-config> --state <state.json>
+  --scan-input <scan.json> --now <epoch>`. Uses validated scanner schema v1
+  diagnostics only; rejects malformed/unsafe evidence before atomically updating
+  `last_health_epoch`. Skip and benchmark-pending outcomes never modify state.
+  **No real scanner is implemented or invoked**; inputs are pre-created fixtures.
+  Config is an intentionally narrow subset of Python Settings, not drop-in
+  compatibility. A missing scan fixture cannot be reported as a successful scan.
 - Library `internal/probe`: approved TLS hostname allowlist and paths from
   Python `tls_verify.py`; bounded HTTP 206 Range, Content-Range,
   Content-Length, ETag/X-Cache observation and transport hostname validation.
