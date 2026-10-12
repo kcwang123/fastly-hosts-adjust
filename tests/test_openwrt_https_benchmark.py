@@ -19,7 +19,7 @@ class BenchmarkTests(unittest.TestCase):
         calls=[]
         def sampler(d,ip,n,*timeouts):
             calls.append(ip)
-            return {"bytes":100,"mbps":20 if ip.endswith(".133") else 10,
+            return {"bytes":100,"mbps":20 if ip == "151.101.1.133" else 10,
                     "status":206,"tls_verified":True}
         s=Settings(benchmark_rounds=3,benchmark_sample_bytes=100,max_benchmark_bytes=600)
         x=m.benchmark("raw.githubusercontent.com","151.101.2.133","151.101.1.133",s,sampler=sampler)
