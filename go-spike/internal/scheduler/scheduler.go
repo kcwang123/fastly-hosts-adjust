@@ -1,14 +1,13 @@
 package scheduler
 
 import (
- "bytes"
  "encoding/json"
  "errors"
  "os"
  "path/filepath"
  "net"
  "context"
- "io"
+ "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/strictjson"
  "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scanner"
 )
 
@@ -38,16 +37,13 @@ type Candidate struct {
  LatencyMS float64 `json:"latency_ms"`
 }
 func strict(data []byte,v any)error{
- d:=json.NewDecoder(bytes.NewReader(data));d.DisallowUnknownFields()
- if err:=d.Decode(v);err!=nil{return err}
- var extra any;if err:=d.Decode(&extra);err==nil{return errors.New("extra JSON")}else if err!=io.EOF{return err}
- return nil
+ return strictjson.Decode(data,v)
 }
 func LoadConfig(data []byte)(Config,error){
  var c Config
  if err:=strict(data,&c);err!=nil{return c,err}
  var fields map[string]json.RawMessage
- if err:=json.Unmarshal(data,&fields);err!=nil{return c,err}
+ if err:=strictjson.Decode(data,&fields);err!=nil{return c,err}
  for _,k:=range []string{"dry_run","auto_benchmark"}{if _,ok:=fields[k];!ok{return c,errors.New("missing safety gate")}}
  if !c.DryRun||c.AutoBenchmark{return c,errors.New("unsafe configuration")}
  if _,ok:=fields["health_interval_hours"];!ok{c.HealthHours=3};if _,ok:=fields["benchmark_interval_hours"];!ok{c.BenchmarkHours=24}
