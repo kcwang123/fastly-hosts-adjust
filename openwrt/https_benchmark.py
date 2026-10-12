@@ -72,7 +72,7 @@ def download(domain, ip, limit, connect_timeout, read_timeout, deadline=None):
         if not isinstance(content_range, str):
             raise ValueError("missing Content-Range")
         import re
-        match = re.fullmatch(r"bytes 0-(\\d+)/(\\d+|\\*)", content_range.strip())
+        match = re.fullmatch(r"bytes 0-(\d+)/(\d+|\*)", content_range.strip())
         if not match or int(match.group(1)) != limit - 1:
             raise ValueError("unexpected Content-Range")
         length = response.getheader("Content-Length")
