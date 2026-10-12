@@ -60,3 +60,26 @@ GitHub/Twitch large-object suitability, actual PBR/WARP public egress,
 system CA provenance and runtime process identity: **NOT ACCEPTED**.
 Release is **NO-GO**. Promotion from this spike requires an explicit
 architectural decision and separate operator-approved evidence.
+
+## Strictly local Health CLI harness (not an operational scanner)
+
+`cmd/fastly-local-health` requires all flags: `--config`, `--state`,
+`--targets`, `--test-ca`, `--loopback-tls`, `--now`.
+The listener must be a numeric loopback address (127.0.0.1 or ::1);
+even when the target file contains a public IPv4 **label**, every socket is
+connected to the supplied loopback listener. Only the three hard-coded
+service hostnames and paths can be requested; server certificates must
+validate against those original hostnames and the explicitly supplied
+test-only CA. Targets are bounded to 1–20 entries and have strict JSON keys.
+
+This harness produces an offline-style Health result and updates the
+explicit state file only after every requested health observation succeeds.
+It has no DNS, router, Cron, public probing, real CDN benchmark or
+automatic target discovery capability. Do not deploy the test CA or this
+harness as the OpenWrt operational runtime. Its output distinguishes
+loopback TLS traffic from public traffic; **no real public network** is used.
+
+The ARM64 CI reports the base offline CLI size and local TLS harness size
+separately; measured host RSS refers to the basic AMD64 config-validation CLI,
+not to actual ARM64 scanner RSS. Router runtime and system CA acceptance
+remain UNKNOWN / NOT ACCEPTED.
