@@ -44,3 +44,7 @@ jobs:
           file /tmp/fastly-readonly-arm64
           stat -c 'arm64_binary_bytes=%s' /tmp/fastly-readonly-arm64
           test "$(stat -c %s /tmp/fastly-readonly-arm64)" -lt 10485760
+          go build -trimpath -ldflags="-s -w" -o /tmp/fastly-local-health-arm64 ./cmd/fastly-local-health
+          file /tmp/fastly-local-health-arm64
+          stat -c 'arm64_local_health_binary_bytes=%s' /tmp/fastly-local-health-arm64
+          test "$(stat -c %s /tmp/fastly-local-health-arm64)" -lt 10485760
