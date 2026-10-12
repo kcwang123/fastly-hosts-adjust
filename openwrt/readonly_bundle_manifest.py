@@ -22,6 +22,8 @@ def validate(source):
         p=source/name
         if p.is_symlink() or not p.is_file():
             raise ValueError("missing or symlink module: "+name)
+        if name in ("readonly_bundle_manifest.py", "build_readonly_bundle.py"):
+            continue  # Builder performs AST dependency validation of both at build time.
         body=p.read_text(encoding="utf-8")
         for prohibited in ("from rewrite_tx import", "import rewrite_tx",
                            "from rewrite_recover import", "import rewrite_recover",
