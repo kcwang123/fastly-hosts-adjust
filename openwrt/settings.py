@@ -20,6 +20,7 @@ class Settings:
     benchmark_deadline_seconds: int = 120
     benchmark_targets: tuple = ()
     auto_benchmark: bool = False
+    max_scan_age_seconds: int = 14400
     trusted_baselines: dict = None
     benchmark_read_timeout_seconds: float = 5.0
     min_improvement_percent: float = 15.0
@@ -78,7 +79,7 @@ class Settings:
         for key in ("health_interval_hours", "benchmark_interval_hours", "process_timeout_seconds",
                     "retry_count", "retry_delay_seconds", "lock_stale_seconds",
                     "max_benchmark_bytes", "benchmark_rounds", "benchmark_sample_bytes",
-                    "benchmark_workers", "benchmark_deadline_seconds", "failure_threshold"):
+                    "benchmark_workers", "benchmark_deadline_seconds", "max_scan_age_seconds", "failure_threshold"):
             value = getattr(obj, key)
             minimum = 0 if key in ("retry_count", "retry_delay_seconds") else 1
             if type(value) is not int or value < minimum:
