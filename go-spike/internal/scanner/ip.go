@@ -1,0 +1,20 @@
+package scanner
+import "net/netip"
+
+// PublicIPv4 is intentionally conservative: ambiguous special-use IPv4
+// addresses are never eligible for probing, even if globally reachable.
+func PublicIPv4(raw string) bool {
+ a,err:=netip.ParseAddr(raw)
+ if err!=nil||!a.Is4()||a.Is4In6(){return false}
+ for _,cidr:=range []string{
+ "0.0.0.0/8","10.0.0.0/8","100.64.0.0/10","127.0.0.0/8",
+ "169.254.0.0/16","172.16.0.0/12","192.0.0.0/24",
+ "192.0.2.0/24","192.168.0.0/16","198.18.0.0/15",
+ "198.51.100.0/24","203.0.113.0/24","224.0.0.0/4",
+ "240.0.0.0/4",
+ }{
+  prefix:=netip.MustParsePrefix(cidr)
+  if prefix.Contains(a){return false}
+ }
+ return true
+}
