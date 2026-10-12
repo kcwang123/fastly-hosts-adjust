@@ -18,6 +18,19 @@ jobs:
       - name: Minimal offline unit tests
         working-directory: go-spike
         run: GOPROXY=off go test ./...
+      - name: Host CLI RSS smoke (not ARM64 device measurement)
+        working-directory: go-spike
+        env:
+          GOPROXY: "off"
+          CGO_ENABLED: "0"
+        run: |
+          go build -trimpath -ldflags="-s -w" -o /tmp/fastly-readonly-host ./cmd/fastly-readonly
+          printf '{"dry_run":true,"auto_benchmark":false}\n' >/tmp/go-spike-safe.json
+          /usr/bin/time -f 'host_peak_rss_kb=%M' /tmp/fastly-readonly-host --config /tmp/go-spike-safe.json
+          printf '{"dry_run":false,"auto_benchmark":false}\n' >/tmp/go-spike-unsafe.json
+          if /tmp/fastly-readonly-host --config /tmp/go-spike-unsafe.json; then
+            echo 'FAIL: unsafe config accepted'; exit 1
+          fi
       - name: Cross-compile for Cortex-A53
         working-directory: go-spike
         env:
