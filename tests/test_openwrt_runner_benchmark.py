@@ -54,7 +54,7 @@ class RunnerBenchmarkTests(unittest.TestCase):
             self.assertEqual(result["status"],"ok")
             self.assertEqual(result["mode"],"benchmark")
             self.assertFalse(result["safe_to_apply"])
-            self.assertEqual(m.read_state(state)["last_health_epoch"],100000)
+            self.assertNotIn("last_health_epoch",m.read_state(state))
             self.assertEqual(m.read_state(state)["last_benchmark_epoch"],100000)
     def test_failed_benchmark_does_not_update_timestamps(self):
         with tempfile.TemporaryDirectory() as d:
