@@ -40,7 +40,7 @@ class RealTLSFaultTests(unittest.TestCase):
                         with context.wrap_socket(conn,server_side=True) as tls:
                             tls.recv(4096)
                             if slow: time.sleep(0.3)
-                            tls.sendall(b"HTTP/1.1 206 Partial Content\r\nContent-Length: 64\r\n"
+                            tls.sendall(b"HTTP/1.1 206 Partial Content\r\nContent-Length: 64\r\nContent-Range: bytes 0-63/64\r\n"
                                         b"Connection: close\r\n\r\n"+b"x"*64)
                     except (OSError,ssl.SSLError):
                         pass
