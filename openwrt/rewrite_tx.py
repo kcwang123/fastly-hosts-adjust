@@ -99,7 +99,8 @@ def prepare(api, desired, ownership, snapshot_path):
             raise ValueError("owned rewrite has drifted: " + domain)
     snapshot = {"version": 1, "before": before,
                 "ownership_before": dict(ownership), "desired": dict(desired),
-                "phase": "prepared", "last_intent": None}
+                "phase": "prepared", "last_intent": None,
+                "registry_existed_before": False}
     if Path(snapshot_path).exists():
         raise ValueError("snapshot already exists; resolve prior transaction")
     atomic_save(snapshot_path, snapshot)
@@ -134,7 +135,10 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
     if dry_run:
         return {"dry_run": True, "actions": [
             {"domain": d, "from": old, "to": target} for d, old, target in operations]}
+    registry_existed_before = registry_path.exists()
     snapshot = prepare(api, desired, ownership, snapshot_path)
+    snapshot["registry_existed_before"] = registry_existed_before
+    atomic_save(snapshot_path, snapshot)
     try:
         updated = dict(ownership)
         for domain, old, target in operations:
@@ -173,7 +177,10 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
                 problems.append(str(e))
         if not problems:
             # Restore original registry if commit happened before a later exception.
-            atomic_save(registry_path, ownership)
+            if ownership or registry_path.exists() and snapshot.get("registry_existed_before", False):
+                atomic_save(registry_path, ownership)
+            elif registry_path.exists():
+                durable_unlink(registry_path)
             durable_unlink(snapshot_path)
         raise RuntimeError("transaction failed; " + ("rollback incomplete: " + "; ".join(problems)
                            if problems else "rollback completed")) from original
