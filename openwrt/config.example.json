@@ -26,5 +26,6 @@
   "benchmark_targets": [],
   "auto_benchmark": false,
   "trusted_baselines": {},
-  "max_scan_age_seconds": 14400
+  "max_scan_age_seconds": 14400,
+  "egress_verified": false
 }
