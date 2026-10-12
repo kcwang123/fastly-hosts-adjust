@@ -42,6 +42,8 @@ def atomic_json(path, value):
 def choose_mode(settings, state, now):
     due = settings.due(now, state.get("last_health_epoch"),
                        state.get("last_benchmark_epoch"))
+    if due["benchmark"] and settings.auto_benchmark and state.get("last_health_epoch") is None:
+        return "health"
     if due["benchmark"] and (settings.benchmark_targets or settings.auto_benchmark):
         return "benchmark"
     if due["health"]:
@@ -128,6 +130,7 @@ def run_once(settings, state_path, scan_path, now, executor=subprocess.run, conf
            "--output", str(scan_path)]
     for attempt in range(settings.retry_count + 1):
         try:
+            Path(scan_path).unlink(missing_ok=True)
             result = executor(cmd, timeout=settings.process_timeout_seconds,
                               capture_output=True, text=True, check=False)
             if result.returncode == 0:
