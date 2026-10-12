@@ -31,14 +31,13 @@ func Scan(ctx context.Context,targets []Target,probe Probe)([]byte,error){
   if ip==nil||ip.To4()==nil||ip.IsPrivate()||ip.IsLoopback()||ip.IsUnspecified()||ip.IsMulticast()||ip.IsLinkLocalUnicast(){return nil,errors.New("unapproved address")}
   // Fail the whole health observation on any failed or timed out probe.
   bounded,cancel:=context.WithTimeout(ctx,3*time.Second)
-  start:=time.Now()
   pop,elapsed,err:=probe(bounded,domain,t.IP)
+  timeoutErr:=bounded.Err()
   cancel()
-  if err!=nil||bounded.Err()!=nil||pop==""||elapsed<=0||elapsed>3*time.Second{return nil,errors.New("probe failed")}
+  if err!=nil||timeoutErr!=nil||pop==""||elapsed<=0||elapsed>3*time.Second{return nil,errors.New("probe failed")}
   if ctx.Err()!=nil{return nil,ctx.Err()}
   ms:=math.Round(elapsed.Seconds()*1e5)/100
   if ms<=0||math.IsInf(ms,0)||math.IsNaN(ms){return nil,errors.New("invalid latency")}
-  _=start
   out.ScannedBlocks++
   out.Candidates=append(out.Candidates,Candidate{Service:t.Service,IP:t.IP,Pop:pop,LatencyMS:ms})
  }
