@@ -25,3 +25,17 @@ This change remains **read-only** and a Draft PR. No cron installation, DHCP, dn
 - Link-level byte overhead and retransmissions are not included in download-body budget.
 - Real OpenWrt CPU/RAM, PBR/WARP, Python packaging, crash recovery and AdGuard integration require device-specific read-only acceptance.
 - No production scheduler or DNS mutation is permitted.
+
+## Read-only route observation (new)
+
+The `route_observer.py` CLI accepts only a JSON list of exact `domain`, `baseline_ip`, and `candidate_ip` entries, then executes `ip -4 route get <IP>` for each endpoint. This is diagnostic evidence of the local kernel routing decision, **not a proof of public egress** and cannot be used as the `egress_evidence_path` consumed by the automatic benchmark.
+
+Example (on a staging/test environment only):
+
+```sh
+python3 openwrt/route_observer.py --targets /tmp/benchmark-targets.json --output /tmp/route-diagnostics.json --timeout 3
+```
+
+The Python `seal`/`verify_seal` helpers support HMAC-SHA256 tamper detection when an independent >=32-byte secret is provided. This only establishes that an envelope was not changed by parties without that key. **It does not establish authenticity of the route data, network exit, or probe implementation.** Never commit this key.
+
+No reliable per-destination public-egress probe or cryptographic external attestation has been implemented. A local `ip route get` or manually constructed JSON must not unblock benchmark automation. Keep `auto_benchmark=false` and `dry_run=true` until a trustworthy verifier is built and end-to-end validated.
