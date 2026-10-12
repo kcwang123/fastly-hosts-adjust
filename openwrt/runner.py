@@ -40,11 +40,11 @@ def atomic_json(path, value):
 def choose_mode(settings, state, now):
     due = settings.due(now, state.get("last_health_epoch"),
                        state.get("last_benchmark_epoch"))
+    if due["health"]:
+        return "health"
     # Benchmark path is intentionally not supported until HTTPS/speed validation exists.
     if due["benchmark"]:
         return "benchmark_pending"
-    if due["health"]:
-        return "health"
     return "skip"
 
 
