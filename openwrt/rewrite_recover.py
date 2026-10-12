@@ -6,11 +6,13 @@ Caller must hold the same exclusive lock as the transaction writer.
 """
 import json
 from pathlib import Path
-from rewrite_tx import current_map, atomic_save
+from rewrite_tx import current_map, atomic_save, verify_private_file
 
 
 def recover(api, registry_path, snapshot_path, *, dry_run=True):
     snapshot_path = Path(snapshot_path)
+    verify_private_file(snapshot_path)
+    verify_private_file(registry_path)
     snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     if not isinstance(snapshot, dict) or snapshot.get("version") != 1:
         raise ValueError("unsupported recovery snapshot")
