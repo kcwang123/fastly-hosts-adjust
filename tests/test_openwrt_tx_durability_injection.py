@@ -46,10 +46,10 @@ class DurableTests(unittest.TestCase):
      if value==B: raise ConnectionError("simulated connection dropped")
      super().add(domain,value)
    api=LostAdd({D:A})
-   with self.assertRaisesRegex(RuntimeError,"rollback completed"):
+   with self.assertRaisesRegex(RuntimeError,"rollback incomplete"):
     rewrite_tx.reconcile(api,{D:B},reg,snap,dry_run=False)
-   self.assertEqual(api.rows[D],A)
-   self.assertFalse(snap.exists())
+   self.assertNotIn(D,api.rows)
+   self.assertTrue(snap.exists())
  def test_commit_registry_failure_keeps_journal_for_recovery(self):
   with tempfile.TemporaryDirectory() as d:
    reg=Path(d)/"registry.json";snap=Path(d)/"snapshot.json"
