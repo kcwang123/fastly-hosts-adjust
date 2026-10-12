@@ -36,12 +36,12 @@ class AutoRunnerTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError,"contaminates"):
                         runner.benchmark_due_with_config(self.config(),{},scan,100,"config.json",
                           lambda *a,**k:self.fail("no benchmark should run"))
-    def test_config_refuses_unverified_egress_even_with_pins(self):
+    def test_config_refuses_missing_egress_evidence_even_with_pins(self):
         with tempfile.TemporaryDirectory() as d:
             config=Path(d)/"config.json"
             config.write_text(json.dumps({"auto_benchmark":True,"dry_run":True,
-                    "trusted_baselines":PIN,"egress_verified":False}))
-            with self.assertRaisesRegex(ValueError,"PBR/WARP"):
+                    "trusted_baselines":PIN,"egress_evidence_path":""}))
+            with self.assertRaisesRegex(ValueError,"egress evidence"):
                 Settings.load(config)
     def test_config_rejects_unsafe_auto_defaults(self):
         from dataclasses import replace
