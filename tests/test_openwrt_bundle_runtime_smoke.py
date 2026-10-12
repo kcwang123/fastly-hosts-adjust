@@ -12,10 +12,10 @@ class RuntimeSmoke(unittest.TestCase):
    state=root/"state.json";state.write_text(json.dumps({"last_health_epoch":200000,
         "last_benchmark_epoch":200000}))
    scan=root/"scan.json"
-   cmd=[sys.executable,"-I",str(dest/"runner.py"),"--config",str(cfg),
+   cmd=[sys.executable,"-B",str(dest/"runner.py"),"--config",str(cfg),
         "--state",str(state),"--scan-output",str(scan)]
    before=state.read_bytes()
-   proc=subprocess.run(cmd,env={**os.environ,"PYTHONPATH":str(Path(__file__).resolve().parents[1]/"openwrt")},
+   proc=subprocess.run(cmd,env={**os.environ,"PYTHONPATH":""},
        text=True,capture_output=True,timeout=8)
    self.assertEqual(proc.returncode,0,proc.stderr)
    self.assertEqual(json.loads(proc.stdout)["status"],"skipped")
