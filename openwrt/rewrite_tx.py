@@ -81,7 +81,8 @@ def prepare(api, desired, ownership, snapshot_path):
         elif actual_ip != owned_ip:
             raise ValueError("owned rewrite has drifted: " + domain)
     snapshot = {"version": 1, "before": before,
-                "ownership_before": dict(ownership), "desired": dict(desired)}
+                "ownership_before": dict(ownership), "desired": dict(desired),
+                "phase": "prepared", "last_intent": None}
     if Path(snapshot_path).exists():
         raise ValueError("snapshot already exists; resolve prior transaction")
     atomic_save(snapshot_path, snapshot)
@@ -120,6 +121,9 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
     try:
         updated = dict(ownership)
         for domain, old, target in operations:
+            snapshot["phase"] = "applying"
+            snapshot["last_intent"] = {"domain": domain, "old": old, "target": target}
+            atomic_save(snapshot_path, snapshot)
             if old is not None:
                 api.delete(domain, old)
             api.add(domain, target)
@@ -127,6 +131,8 @@ def reconcile(api, desired, registry_path, snapshot_path, *, dry_run=True):
         live = current_map(api.list())
         if any(live.get(domain) != target for domain, target in desired.items()):
             raise RuntimeError("post-write verification failed")
+        snapshot["phase"] = "committing"
+        atomic_save(snapshot_path, snapshot)
         atomic_save(registry_path, updated)
         snapshot_path.unlink()
         return {"dry_run": False, "updated": len(operations)}
