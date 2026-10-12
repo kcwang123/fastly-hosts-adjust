@@ -22,6 +22,7 @@ class RecoveryTests(unittest.TestCase):
     def fixture(self,path,before,owned,desired):
         registry=Path(path)/"ownership.json"; snapshot=Path(path)/"snapshot.json"
         snapshot.write_text(json.dumps({"version":1,"before":before,"ownership_before":owned,"desired":desired}))
+        snapshot.chmod(0o600)
         return registry,snapshot
     def test_rollback_update_after_interruption(self):
         with tempfile.TemporaryDirectory() as d:
