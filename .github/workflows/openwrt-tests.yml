@@ -1,0 +1,26 @@
+name: OpenWrt adapter tests
+on:
+  pull_request:
+    paths:
+      - "openwrt/**"
+      - "tests/test_openwrt_adguard_plan.py"
+      - ".github/workflows/openwrt-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "openwrt/**"
+      - "tests/test_openwrt_adguard_plan.py"
+      - ".github/workflows/openwrt-tests.yml"
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s tests -p test_openwrt_adguard_plan.py -v
+      - run: python -m py_compile openwrt/adguard_plan.py
+      - run: sh -n openwrt/preflight.sh
