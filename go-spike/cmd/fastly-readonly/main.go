@@ -1,13 +1,13 @@
 // A deliberately offline-only read-only contract spike. No network or router writes.
 package main
-import ("encoding/json";"errors";"flag";"fmt";"os";"github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scheduler")
+import ("encoding/json";"errors";"flag";"fmt";"os";"github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scheduler";"github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/strictjson")
 type settings struct { DryRun bool `json:"dry_run"`; AutoBenchmark bool `json:"auto_benchmark"` }
 func validate(b []byte) error {
  var m map[string]json.RawMessage
- if err:=json.Unmarshal(b,&m);err!=nil{return err}
+ if err:=strictjson.Decode(b,&m);err!=nil{return err}
  if len(m)!=2{return errors.New("two safety gates required")}
  for k:=range m {if k!="dry_run"&&k!="auto_benchmark"{return fmt.Errorf("unsupported setting: %s",k)}}
- var s settings;if err:=json.Unmarshal(b,&s);err!=nil{return err}
+ var s settings;if err:=strictjson.Decode(b,&s);err!=nil{return err}
  if !s.DryRun||s.AutoBenchmark{return errors.New("read-only safety gates violated")}
  return nil
 }
