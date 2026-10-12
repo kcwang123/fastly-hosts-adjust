@@ -23,6 +23,37 @@ benchmark=importlib.util.module_from_spec(spec);sys.modules[spec.name]=benchmark
 
 @unittest.skipUnless(shutil.which("openssl"),"openssl required for ephemeral TLS fixture")
 class LocalTLSTests(unittest.TestCase):
+    def test_local_tls_truncated_body_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            cert=Path(d)/"cert.pem"; key=Path(d)/"key.pem"
+            subprocess.run(["openssl","req","-x509","-newkey","rsa:2048","-nodes",
+                "-days","1","-keyout",str(key),"-out",str(cert),
+                "-subj","/CN=raw.githubusercontent.com",
+                "-addext","subjectAltName=DNS:raw.githubusercontent.com"],
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True,timeout=20)
+            server=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            server.load_cert_chain(str(cert),str(key))
+            client=ssl.create_default_context(cafile=str(cert))
+            listener=socket.socket();listener.bind(("127.0.0.1",0));listener.listen(1)
+            port=listener.getsockname()[1]
+            def serve():
+                try:
+                    conn,_=listener.accept()
+                    with server.wrap_socket(conn,server_side=True) as tls:
+                        tls.recv(4096)
+                        tls.sendall(b"HTTP/1.1 206 Partial Content\\r\\nContent-Length: 32\\r\\n"
+                                    b"Connection: close\\r\\n\\r\\n"+b"x"*32)
+                finally:
+                    listener.close()
+            worker=threading.Thread(target=serve,daemon=True);worker.start()
+            real_connect=socket.create_connection
+            with patch.object(benchmark.socket,"create_connection",
+                              side_effect=lambda addr,timeout:real_connect(("127.0.0.1",port),timeout)):
+                with patch.object(benchmark.ssl,"create_default_context",return_value=client):
+                    with self.assertRaisesRegex(ValueError,"too small"):
+                        benchmark.download("raw.githubusercontent.com","151.101.1.133",256,2,2)
+            worker.join(3)
+            self.assertFalse(worker.is_alive())
     def test_real_tls_sni_range_and_truncated_file(self):
         with tempfile.TemporaryDirectory() as d:
             cert=Path(d)/"cert.pem";key=Path(d)/"key.pem"
