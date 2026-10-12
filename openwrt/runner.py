@@ -101,7 +101,7 @@ def benchmark_due_with_config(settings, state, scan_path, now, config_path, exec
             raise RuntimeError("benchmark subprocess failed")
         bundle = json.loads(dest.read_text(encoding="utf-8"))
         from benchmark_v3 import verify
-        verified = verify(bundle, settings)
+        verified = verify(bundle, settings, expected_target=target)
         outputs.append(verified)
     if sum(x["measured_bytes"] for x in outputs) > settings.max_benchmark_bytes:
         raise ValueError("aggregate benchmark exceeded configured limit")
