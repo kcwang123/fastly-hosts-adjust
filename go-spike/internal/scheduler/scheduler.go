@@ -118,7 +118,7 @@ func RunHealth(ctx context.Context,config,old []byte,now int64,targets []scanner
  if now<0{return "",nil,nil,errors.New("invalid clock")}
  mode:=Mode(c,st,now)
  if mode!="health"{if mode=="skip"{return "skipped",nil,nil,nil};return "pending",nil,nil,nil}
- evidence,e:=scanner.Scan(ctx,targets,probe);if e!=nil{return "error",nil,nil,e}
+ evidence,e:=scanner.ScanWithRetries(ctx,targets,probe,2);if e!=nil{return "error",nil,nil,e}
  status,next,e:=Run(config,old,evidence,now)
  if e!=nil{return "error",nil,nil,e}
  return status,next,evidence,nil
