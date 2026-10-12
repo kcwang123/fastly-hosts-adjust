@@ -41,11 +41,12 @@ def atomic_json(path, value):
 def choose_mode(settings, state, now):
     due = settings.due(now, state.get("last_health_epoch"),
                        state.get("last_benchmark_epoch"))
+    if due["benchmark"] and settings.benchmark_targets:
+        return "benchmark"
     if due["health"]:
         return "health"
-    # Benchmark path is intentionally not supported until HTTPS/speed validation exists.
     if due["benchmark"]:
-        return "benchmark" if settings.benchmark_targets else "benchmark_pending"
+        return "benchmark_pending"
     return "skip"
 
 
@@ -86,6 +87,7 @@ def run_once(settings, state_path, scan_path, now, executor=subprocess.run, conf
         try:
             result = benchmark_due_with_config(settings, state, scan_path, now, config_path, executor)
             state["last_benchmark_epoch"] = now
+            state["last_health_epoch"] = now
             atomic_json(state_path, state)
             return {"status": "ok", "mode": "benchmark", "targets": len(result["benchmarks"]),
                     "safe_to_apply": False}
