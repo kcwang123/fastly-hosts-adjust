@@ -48,7 +48,7 @@ class SecondChildFault(unittest.TestCase):
     "socket.create_connection=redirect\n")
    cfg=p/"config.json";cfg.write_text(json.dumps({"benchmark_targets":TARGETS,
     "benchmark_sample_bytes":128,"benchmark_rounds":3,"max_benchmark_bytes":1536,
-    "benchmark_read_timeout_seconds":0.1,"process_timeout_seconds":10,
+    "benchmark_read_timeout_seconds":0.1,"benchmark_deadline_seconds":5,"process_timeout_seconds":10,
     "max_sample_cv_percent":100.0,"dry_run":True,"auto_benchmark":False}))
    settings=Settings.load(cfg);state=p/"state.json";scan=p/"scan.json"
    runner.atomic_json(state,{"last_health_epoch":10,"last_benchmark_epoch":20})
