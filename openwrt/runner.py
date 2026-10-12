@@ -9,6 +9,7 @@ import sys
 import time
 
 from settings import Settings
+from speed_contract import check_evidence
 
 
 def read_state(path):
@@ -44,15 +45,52 @@ def choose_mode(settings, state, now):
         return "health"
     # Benchmark path is intentionally not supported until HTTPS/speed validation exists.
     if due["benchmark"]:
-        return "benchmark_pending"
+        return "benchmark" if settings.benchmark_targets else "benchmark_pending"
     return "skip"
 
 
-def run_once(settings, state_path, scan_path, now, executor=subprocess.run):
+def benchmark_due_with_config(settings, state, scan_path, now, config_path, executor=subprocess.run):
+    """Run configured trusted targets; never mark success on partial failure."""
+    outputs = []
+    for index, target in enumerate(settings.benchmark_targets):
+        dest = Path(str(scan_path) + ".benchmark." + str(index) + ".json")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.unlink(missing_ok=True)
+        cmd = [sys.executable, str(Path(__file__).with_name("https_benchmark.py")),
+               "--config", str(config_path),
+               "--domain", target["domain"],
+               "--baseline-ip", target["baseline_ip"],
+               "--candidate-ip", target["candidate_ip"],
+               "--output", str(dest)]
+        # Run an isolated benchmark subprocess with an OS-enforced timeout.
+        outcome = executor(cmd, timeout=settings.process_timeout_seconds,
+                           capture_output=True, text=True, check=False)
+        if outcome.returncode != 0:
+            raise RuntimeError("benchmark subprocess failed")
+        evidence = json.loads(dest.read_text(encoding="utf-8"))
+        verified = check_evidence(evidence, max_bytes=settings.max_benchmark_bytes,
+                                  min_improvement_percent=settings.min_improvement_percent,
+                                  minimum_rounds=settings.benchmark_rounds)
+        outputs.append(verified)
+    return {"benchmarks": outputs, "last_benchmark_epoch": now}
+
+
+def run_once(settings, state_path, scan_path, now, executor=subprocess.run, config_path=None):
     state = read_state(state_path)
     mode = choose_mode(settings, state, now)
     if mode == "skip":
         return {"status": "skipped", "reason": "not_due"}
+    if mode == "benchmark":
+        if not config_path:
+            return {"status": "error", "reason": "missing_benchmark_config_path"}
+        try:
+            result = benchmark_due_with_config(settings, state, scan_path, now, config_path, executor)
+            state["last_benchmark_epoch"] = now
+            atomic_json(state_path, state)
+            return {"status": "ok", "mode": "benchmark", "targets": len(result["benchmarks"]),
+                    "safe_to_apply": False}
+        except (OSError, ValueError, RuntimeError, json.JSONDecodeError, subprocess.TimeoutExpired) as exc:
+            return {"status": "error", "reason": type(exc).__name__}
     if mode == "benchmark_pending":
         # Fail safely instead of pretending a latency scan is a full benchmark.
         return {"status": "pending", "reason": "full_benchmark_not_implemented"}
@@ -90,7 +128,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     settings = Settings.load(args.config)
     # flock available on OpenWrt BusyBox; use external lock wrapper before cron.
-    outcome = run_once(settings, args.state, args.scan_output, int(time.time()))
+    outcome = run_once(settings, args.state, args.scan_output, int(time.time()), config_path=args.config)
     print(json.dumps(outcome, sort_keys=True))
     return 0 if outcome["status"] in ("ok", "skipped", "pending") else 1
 
