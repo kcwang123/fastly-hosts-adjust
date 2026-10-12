@@ -53,6 +53,10 @@ def choose_mode(settings, state, now):
 def benchmark_due_with_config(settings, state, scan_path, now, config_path, executor=subprocess.run):
     """Run configured trusted targets; never mark success on partial failure."""
     outputs = []
+    count = len(settings.benchmark_targets)
+    per_target = settings.max_benchmark_bytes // count if count else 0
+    if per_target < 2 * settings.benchmark_rounds * settings.benchmark_sample_bytes:
+        raise ValueError("global budget insufficient for all benchmark targets")
     for index, target in enumerate(settings.benchmark_targets):
         dest = Path(str(scan_path) + ".benchmark." + str(index) + ".json")
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -62,7 +66,7 @@ def benchmark_due_with_config(settings, state, scan_path, now, config_path, exec
                "--domain", target["domain"],
                "--baseline-ip", target["baseline_ip"],
                "--candidate-ip", target["candidate_ip"],
-               "--output", str(dest)]
+               "--output", str(dest), "--max-bytes", str(per_target)]
         # Run an isolated benchmark subprocess with an OS-enforced timeout.
         outcome = executor(cmd, timeout=settings.process_timeout_seconds,
                            capture_output=True, text=True, check=False)
@@ -73,6 +77,8 @@ def benchmark_due_with_config(settings, state, scan_path, now, config_path, exec
                                   min_improvement_percent=settings.min_improvement_percent,
                                   minimum_rounds=settings.benchmark_rounds)
         outputs.append(verified)
+    if sum(x["measured_bytes"] for x in outputs) > settings.max_benchmark_bytes:
+        raise ValueError("aggregate benchmark exceeded configured limit")
     return {"benchmarks": outputs, "last_benchmark_epoch": now}
 
 
