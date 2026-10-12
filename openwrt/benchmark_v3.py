@@ -9,7 +9,7 @@ import statistics
 from speed_contract import check_evidence
 from tls_verify import SERVICES
 
-def verify(bundle, settings):
+def verify(bundle, settings, expected_target=None):
     if not isinstance(bundle,dict) or set(bundle)!={"schema_version","evidence","evaluation","diagnostics","dry_run","samples"}:
         raise ValueError("v3 envelope required")
     if bundle["schema_version"] != 3 or bundle["dry_run"] is not True:
@@ -62,8 +62,12 @@ def verify(bundle, settings):
     for label in ("baseline","candidate"):
         addresses={r["ip"] for r in rows if r["label"]==label}
         if len(addresses)!=1:raise ValueError("changing route address")
-    if rows[0]["ip"]==candidate and all(r["ip"]==candidate for r in rows):
+    if {r["ip"] for r in rows if r["label"]=="baseline"} == {candidate}:
         raise ValueError("baseline equals candidate")
+    if expected_target is not None:
+        if (domain!=expected_target["domain"] or candidate!=expected_target["candidate_ip"]
+                or {r["ip"] for r in rows if r["label"]=="baseline"}!={expected_target["baseline_ip"]}):
+            raise ValueError("target pair mismatch")
     if any(x is not None for x in etags) and (None in etags or len(set(etags))!=1):
         raise ValueError("ETag mismatch")
     known=[x for x in cache if x!="UNKNOWN"]
@@ -83,6 +87,8 @@ def verify(bundle, settings):
     present=bundle["diagnostics"]
     if not isinstance(present,dict) or set(present)!=set(diag):
         raise ValueError("diagnostics mismatch")
+    if not isinstance(present["cv_percent"],dict) or set(present["cv_percent"])!=set(cv):
+        raise ValueError("invalid CV diagnostics")
     if any(not math.isclose(present["cv_percent"][k],cv[k],rel_tol=1e-8,abs_tol=1e-8) for k in cv):
         raise ValueError("CV mismatch")
     if present["etag"]!=diag["etag"] or present["cache_state"]!=diag["cache_state"]:
