@@ -105,8 +105,13 @@ def benchmark(domain, baseline_ip, candidate_ip, settings, *, sampler=download):
             # Do not refund bytes from a failed/ambiguous transport: charge
             # full reservation to avoid exceeding budget on retries.
             try:
-                result = sampler(domain, ip, reserved, settings.connect_timeout_seconds,
-                                 settings.benchmark_read_timeout_seconds)
+                if sampler is download:
+                    result = sampler(domain, ip, reserved,
+                                     min(settings.connect_timeout_seconds, max(0.001, deadline-time.monotonic())),
+                                     settings.benchmark_read_timeout_seconds, deadline=deadline)
+                else:
+                    result = sampler(domain, ip, reserved, settings.connect_timeout_seconds,
+                                     settings.benchmark_read_timeout_seconds)
             except Exception:
                 budget.finish(reserved, reserved)
                 raise
