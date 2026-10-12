@@ -15,6 +15,8 @@ def main(argv=None):
     parser.add_argument("--scan-output",required=True)
     args=parser.parse_args(argv)
     root=Path(__file__).resolve().parent
+    if not args.config or not args.state or not args.scan_output:
+        raise ValueError("all launcher paths required")
     # -I ignores PYTHONPATH, PYTHONHOME and user site packages, but it also
     # omits the script directory. Explicitly insert only this reviewed bundle.
     script="import runpy,sys;sys.path.insert(0,sys.argv[1]);sys.argv=['runner.py']+sys.argv[2:];runpy.run_path(sys.path[0]+'/runner.py',run_name='__main__')"
