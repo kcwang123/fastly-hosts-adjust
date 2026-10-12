@@ -1,6 +1,6 @@
 // A deliberately offline-only read-only contract spike. No network or router writes.
 package main
-import ("encoding/json";"errors";"flag";"fmt";"os")
+import ("encoding/json";"errors";"flag";"fmt";"os";"github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scheduler")
 type settings struct { DryRun bool `json:"dry_run"`; AutoBenchmark bool `json:"auto_benchmark"` }
 func validate(b []byte) error {
  var m map[string]json.RawMessage
@@ -12,7 +12,18 @@ func validate(b []byte) error {
  return nil
 }
 func main(){
- path:=flag.String("config","","minimal safety-gate JSON");flag.Parse()
+ path:=flag.String("config","","minimal safety-gate JSON")
+ state:=flag.String("state","","offline scheduler state file")
+ scan:=flag.String("scan-input","","offline scan JSON fixture (never collected via network)")
+ now:=flag.Int64("now",0,"explicit epoch time for offline scheduler")
+ flag.Parse()
+ if *state!="" || *scan!="" {
+   if *path=="" || *state=="" || *scan=="" || *now<=0 {fmt.Fprintln(os.Stderr,"offline scheduler requires --config, --state, --scan-input, --now");os.Exit(2)}
+   mode,err:=scheduler.RunFiles(*path,*state,*scan,*now)
+   if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+   fmt.Printf("{\"status\":%q,\"safe_to_apply\":false,\"network_executed\":false}\n",mode)
+   return
+ }
  if *path==""{fmt.Fprintln(os.Stderr,"--config required");os.Exit(2)}
  b,err:=os.ReadFile(*path);if err==nil{err=validate(b)}
  if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}
