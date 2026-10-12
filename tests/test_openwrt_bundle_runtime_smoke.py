@@ -9,8 +9,8 @@ class RuntimeSmoke(unittest.TestCase):
    root=Path(d);dest=root/"bundle";build(Path(__file__).resolve().parents[1]/"openwrt",dest)
    self.assertTrue(verify(dest))
    cfg=root/"config.json";cfg.write_text(json.dumps({"dry_run":True,"auto_benchmark":False}))
-   state=root/"state.json";state.write_text(json.dumps({"last_health_epoch":200000,
-        "last_benchmark_epoch":200000}))
+   state=root/"state.json";state.write_text(json.dumps({"last_health_epoch":int(time.time()),
+        "last_benchmark_epoch":int(time.time())}))
    scan=root/"scan.json"
    cmd=[sys.executable,"-B",str(dest/"runner.py"),"--config",str(cfg),
         "--state",str(state),"--scan-output",str(scan)]
