@@ -41,8 +41,8 @@ class LocalTLSTests(unittest.TestCase):
                     conn,_=listener.accept()
                     with server.wrap_socket(conn,server_side=True) as tls:
                         tls.recv(4096)
-                        tls.sendall(b"HTTP/1.1 206 Partial Content\\r\\nContent-Length: 32\\r\\nContent-Range: bytes 0-255/256\\r\\n"
-                                    b"Connection: close\\r\\n\\r\\n"+b"x"*32)
+                        tls.sendall(b"HTTP/1.1 206 Partial Content\r\nContent-Length: 32\r\nContent-Range: bytes 0-255/256\r\n"
+                                    b"Connection: close\r\n\r\n"+b"x"*32)
                 finally:
                     listener.close()
             worker=threading.Thread(target=serve,daemon=True);worker.start()
