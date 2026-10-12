@@ -17,6 +17,8 @@ class Settings:
     benchmark_rounds: int = 3
     benchmark_sample_bytes: int = 262144
     benchmark_workers: int = 1
+    benchmark_deadline_seconds: int = 120
+    benchmark_targets: tuple = ()
     benchmark_read_timeout_seconds: float = 5.0
     min_improvement_percent: float = 15.0
     failure_threshold: int = 2
@@ -38,11 +40,31 @@ class Settings:
             if not isinstance(s, list) or not s or len(set(s)) != len(s) or not set(s) <= {"github", "x", "twitch"}:
                 raise ValueError("invalid enabled_services")
             payload["enabled_services"] = tuple(s)
+        if "benchmark_targets" in payload:
+            targets = payload["benchmark_targets"]
+            if not isinstance(targets, list):
+                raise ValueError("benchmark_targets must be a list")
+            from ipaddress import ip_address
+            from tls_verify import SERVICES
+            clean = []
+            for target in targets:
+                if not isinstance(target, dict) or set(target) != {"domain", "baseline_ip", "candidate_ip"}:
+                    raise ValueError("invalid benchmark target")
+                if target["domain"] not in SERVICES:
+                    raise ValueError("unapproved benchmark domain")
+                for key in ("baseline_ip", "candidate_ip"):
+                    ip = ip_address(target[key])
+                    if ip.version != 4 or not ip.is_global:
+                        raise ValueError("benchmark target must use public IPv4")
+                if target["baseline_ip"] == target["candidate_ip"]:
+                    raise ValueError("baseline equals candidate")
+                clean.append(target)
+            payload["benchmark_targets"] = tuple(clean)
         obj = cls(**payload)
         for key in ("health_interval_hours", "benchmark_interval_hours", "process_timeout_seconds",
                     "retry_count", "retry_delay_seconds", "lock_stale_seconds",
                     "max_benchmark_bytes", "benchmark_rounds", "benchmark_sample_bytes",
-                    "benchmark_workers", "failure_threshold"):
+                    "benchmark_workers", "benchmark_deadline_seconds", "failure_threshold"):
             value = getattr(obj, key)
             minimum = 0 if key in ("retry_count", "retry_delay_seconds") else 1
             if type(value) is not int or value < minimum:
@@ -62,6 +84,10 @@ class Settings:
             raise ValueError("unsupported benchmark workload")
         if obj.benchmark_sample_bytes > obj.max_benchmark_bytes:
             raise ValueError("sample exceeds total benchmark budget")
+        if obj.benchmark_workers != 1:
+            raise ValueError("parallel benchmark workers are not implemented; use 1")
+        if obj.benchmark_deadline_seconds > obj.process_timeout_seconds:
+            raise ValueError("benchmark deadline exceeds process timeout")
         if type(obj.dry_run) is not bool:
             raise ValueError("dry_run must be boolean")
         if obj.benchmark_interval_hours < obj.health_interval_hours:
