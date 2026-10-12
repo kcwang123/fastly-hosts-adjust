@@ -62,6 +62,24 @@ def download(domain, ip, limit, connect_timeout, read_timeout, deadline=None):
         response.begin()
         if response.status not in (200, 206):
             raise ValueError("HTTP download status not OK")
+        # Full-size throughput samples require exact partial content: 200 means
+        # Range was ignored and may serve unrelated cache representations.
+        if response.status != 206:
+            raise ValueError("server ignored Range; not benchmarkable")
+        if response.getheader("Content-Encoding", "identity").lower() != "identity":
+            raise ValueError("compressed response not comparable")
+        content_range = response.getheader("Content-Range")
+        if not isinstance(content_range, str):
+            raise ValueError("missing Content-Range")
+        import re
+        match = re.fullmatch(r"bytes 0-(\\d+)/(\\d+|\\*)", content_range.strip())
+        if not match or int(match.group(1)) != limit - 1:
+            raise ValueError("unexpected Content-Range")
+        length = response.getheader("Content-Length")
+        if length is not None and (not length.isdecimal() or int(length) != limit):
+            raise ValueError("Content-Length mismatch")
+        if response.getheader("Cache-Control", "").lower().find("no-store") >= 0:
+            raise ValueError("no-store response unsuitable for CDN benchmark")
         # A server may ignore Range. Never read past the reserved budget.
         while count < limit:
             if deadline is not None:
