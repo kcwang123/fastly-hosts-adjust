@@ -83,3 +83,24 @@ The ARM64 CI reports the base offline CLI size and local TLS harness size
 separately; measured host RSS refers to the basic AMD64 config-validation CLI,
 not to actual ARM64 scanner RSS. Router runtime and system CA acceptance
 remain UNKNOWN / NOT ACCEPTED.
+
+## Security hardening review (localhost harness only)
+
+- JSON input is bounded to 1 MiB and recursively rejects duplicate keys,
+  including nested objects, trailing values, and unknown struct fields.
+  Missing required safety gates fail closed in both CLIs.
+- The local harness requires owner-controlled, private regular files, rejects
+  symlinks for config/targets/test CA/state and uses an advisory exclusive
+  `flock` on a no-follow `.lock` path before reading or replacing state.
+  This serializes **cooperating** harness invocations; it cannot defend against
+  privileged adversaries, non-cooperating writers or parent-directory TOCTOU.
+- State is updated only after validated completed health observations.
+  The test-only CA is explicitly supplied; it is NOT OpenWrt system-CA evidence.
+- A `context.WithTimeout` bounds cooperative Go network operations via the
+  injected TLS client, but **does not hard-kill arbitrary injected Probe code**
+  that ignores context. It is not an OS-enforced execution deadline.
+- `fastly-local-health` only connects to explicitly validated numeric loopback
+  endpoints. The configured candidate IPv4 address is merely a diagnostic
+  label in this harness. There is no public probing or CDN verification.
+- No on-router permissions, CA provenance, ARM64 peak RSS, public egress,
+  DNS CAS or production scanner behaviors are accepted.
