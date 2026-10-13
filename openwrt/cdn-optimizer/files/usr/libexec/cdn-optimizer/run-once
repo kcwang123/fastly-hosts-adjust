@@ -15,7 +15,12 @@ fi
 [ ! -L "$STATE" ] || exit 4
 mkdir -m 0700 -p "$STATE"
 [ -d "$STATE" ] && [ ! -L "$STATE" ] || exit 4
-[ "$(stat -c %u "$STATE")" = 0 ] || { echo "unsafe state ownership" >&2; exit 4; }
+# Numeric ls output is supported by target BusyBox; mode uid gid must be root-only.
+set -- $(LC_ALL=C ls -ldn "$STATE")
+[ "$1" = "drwx------" ] && [ "$3" = 0 ] && [ "$4" = 0 ] || {
+  echo "unsafe state owner or permissions" >&2
+  exit 4
+}
 chmod 0700 "$STATE"
 [ ! -L "$STATE/result.json" ] || exit 4
 TMP="$(mktemp "$STATE/.result.XXXXXX")"
