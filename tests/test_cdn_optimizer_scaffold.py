@@ -51,6 +51,17 @@ class OfflinePackagingContract(unittest.TestCase):
         self.assertIn("$(INSTALL_BIN) $(CDN_OPTIMIZER_BIN)", makefile)
         self.assertNotIn("uci commit", makefile)
 
+    def test_manual_runner_contract(self):
+        script = (CDN / "files/usr/libexec/cdn-optimizer/run-once").read_text()
+        for expected in ("--manual-public-probe-authorized", "allow_public_probe", 'mkdir "$LOCK"', 'mv -f "$TMP" "$STATE/result.json"', 'rm -f "$STATE/result.json"'):
+            self.assertIn(expected, script)
+        self.assertNotIn("eval ", script)
+        makefile = (CDN / "Makefile").read_text()
+        self.assertIn("run-once", makefile)
+        self.assertIn("rpcd/cdn-optimizer", makefile)
+        rpcd = (CDN / "files/usr/libexec/rpcd/cdn-optimizer").read_text()
+        self.assertNotIn("run-once", rpcd)
+
 
 if __name__ == "__main__":
     unittest.main()
