@@ -33,7 +33,7 @@ Do not create a new router account, expose session IDs, or broaden ACL for testi
 - [ ] Browser console / network errors verified.
 - [ ] Final exact-head focused tests and all required CI green.
 - [ ] Exact-head IPKs checksums/manifest reissued after code changes and device version checked (if seeking deployment acceptance).
-- [ ] Regression review of rpcd result.json ownership/schema validation; do not mark verified without tests.
+- [x] Offline implementation: rpcd result requires root-owned 0700 directory, root-owned 0600 file, bounded bytes, and jsonfilter schema_version=1 / safe_to_apply=false / mode=read_only. Package explicitly depends on jsonfilter; offline guards added.\n- [ ] Security regression runtime verification: hostile fixtures (malformed JSON, wrong owner/mode, symlink, oversized, missing jsonfilter) and exact-head CI; no claim of device verification.\n- [ ] Remaining race/contract analysis: validation and cat are separate file reads; JSON field checks are not a full strict schema/duplicate-key validator.
 - [ ] Separate explicit authorization for any Stage E network apply.
 - [ ] Merge conditions and owner approval verified; PR remains Draft.
 
