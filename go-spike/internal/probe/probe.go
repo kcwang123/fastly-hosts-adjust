@@ -12,6 +12,8 @@ import (
  "strconv"
  "strings"
  "time"
+
+ "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scanner"
 )
 
 var paths = map[string]string{
@@ -54,7 +56,7 @@ func ValidateResponse(r *http.Response, n int64)(Result,error){
 // Injected dial permits fully local TLS testing without outbound public requests.
 func Range(ctx context.Context,domain,ip string,n int64,roots *x509.CertPool,dial func(context.Context,string,string)(net.Conn,error))(Result,error){
  path,ok:=paths[domain];if !ok{return Result{},errors.New("unapproved host")}
- addr:=net.ParseIP(ip);if addr==nil||addr.To4()==nil||addr.IsLoopback()||addr.IsPrivate()||addr.IsUnspecified()||addr.IsMulticast()||addr.IsLinkLocalUnicast(){return Result{},errors.New("nonpublic IPv4")}
+ if !scanner.PublicIPv4(ip){return Result{},errors.New("nonpublic IPv4")}
  if n<=0||n>1<<20{return Result{},errors.New("budget")}
  if dial==nil{dial=(&net.Dialer{Timeout:3*time.Second}).DialContext}
  tr:=&http.Transport{Proxy:nil,DisableKeepAlives:true,DisableCompression:true,
