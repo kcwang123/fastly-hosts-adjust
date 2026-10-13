@@ -31,6 +31,8 @@ case "$bytes" in ''|*[!0-9]*) exit 5;; esac
 [ "$bytes" -ge 1 ] && [ "$bytes" -le 65536 ] || exit 5
 # CLI validates IPv4 eligibility and TLS hostname; redirect and bytes bounded.
 if /usr/bin/fastly-public-health --service "$service" --ip "$candidate" --bytes "$bytes" --public-probe-required > "$TMP"; then
+  # Only a verified, bounded successful report may be published.
+  [ -s "$TMP" ] && [ "$(wc -c < "$TMP")" -le 16384 ] || { rm -f "$STATE/result.json"; exit 6; }
   chmod 0600 "$TMP"
   mv -f "$TMP" "$STATE/result.json"
 else
