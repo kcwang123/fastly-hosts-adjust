@@ -52,17 +52,22 @@ jobs:
           sdk="$RUNNER_TEMP/sdk"
           mkdir -p "$sdk/package/cdn-optimizer"
           cp -a openwrt/cdn-optimizer/. "$sdk/package/cdn-optimizer/"
+          mkdir -p "$sdk/package/luci-app-cdn-optimizer"
+          cp -a openwrt/luci-app-cdn-optimizer/. "$sdk/package/luci-app-cdn-optimizer/"
           cd "$sdk"
           make defconfig
           binary="$RUNNER_TEMP/fastly-public-health"
           digest="$(sha256sum "$binary" | cut -d' ' -f1)"
           make package/cdn-optimizer/compile -j2 V=s CDN_OPTIMIZER_BIN="$binary" CDN_OPTIMIZER_SHA256="$digest"
+          make package/luci-app-cdn-optimizer/compile -j2 V=s CDN_OPTIMIZER_BIN="$binary" CDN_OPTIMIZER_SHA256="$digest"
           ipk="$(find bin/packages -type f -name 'cdn-optimizer_*.ipk' -print -quit)"
           test -n "$ipk"
+          luci_ipk="$(find bin/packages -type f -name 'luci-app-cdn-optimizer_*.ipk' -print -quit)"
+          test -n "$luci_ipk"
           mkdir -p "$RUNNER_TEMP/sdk-evidence"
-          cp "$ipk" "$RUNNER_TEMP/sdk-evidence/"
+          cp "$ipk" "$luci_ipk" "$RUNNER_TEMP/sdk-evidence/"
           cd "$RUNNER_TEMP/sdk-evidence"
-          sha256sum "$(basename "$ipk")" > SHA256SUMS
+          sha256sum "$(basename "$ipk")" "$(basename "$luci_ipk")" > SHA256SUMS
           actual="$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)"
           test "$actual" = "$SOURCE_HEAD_SHA"
           printf 'source_commit=%s\nsdk=23.05.3/mediatek/filogic\narch=aarch64_cortex-a53\n' "$actual" > BUILD-IDENTITY.txt
