@@ -46,6 +46,21 @@ class OfflinePackagingContract(unittest.TestCase):
             self.assertNotIn("uci.set", script)
             self.assertNotIn("fs.write", script)
 
+    def test_settings_load_failure_must_not_look_disabled(self):
+        script = (LUCI / "htdocs/luci-static/resources/view/cdn-optimizer/settings.js").read_text()
+        self.assertIn("return false;", script)
+        self.assertIn("if (!loaded)", script)
+        self.assertIn("Configuration unavailable", script)
+        self.assertNotIn("catch(function() { return null; })", script)
+
+    def test_rpcd_never_exposes_write_or_probe_methods(self):
+        plugin = str(CDN / "files/usr/libexec/rpcd/cdn-optimizer")
+        listing = subprocess.run(["sh", plugin, "list"], text=True, capture_output=True, check=True)
+        self.assertEqual(set(json.loads(listing.stdout)), {"status"})
+        acl = json.loads((CDN / "files/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json").read_text())
+        self.assertEqual(acl["luci-app-cdn-optimizer"]["read"]["ubus"]["cdn-optimizer"], ["status"])
+        self.assertNotIn("write", acl["luci-app-cdn-optimizer"])
+
     def test_package_is_explicitly_passive(self):
         makefile = (CDN / "Makefile").read_text()
         self.assertNotIn("Build/Compile\n\tgo", makefile)
