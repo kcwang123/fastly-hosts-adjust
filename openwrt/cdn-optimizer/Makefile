@@ -34,6 +34,7 @@ define Package/cdn-optimizer/install
  $(INSTALL_CONF) ./files/etc/config/cdn_optimizer $(1)/etc/config/cdn_optimizer
  $(INSTALL_BIN) ./files/etc/init.d/cdn-optimizer $(1)/etc/init.d/cdn-optimizer
  $(INSTALL_BIN) ./files/usr/libexec/cdn-optimizer/status $(1)/usr/libexec/cdn-optimizer/status
+ $(INSTALL_BIN) ./files/usr/libexec/cdn-optimizer/run-once $(1)/usr/libexec/cdn-optimizer/run-once
  $(INSTALL_DATA) ./files/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json $(1)/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json
 endef
 
