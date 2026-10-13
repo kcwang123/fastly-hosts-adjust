@@ -5,6 +5,8 @@ import (
  "errors"
  "math"
  "sort"
+
+ "github.com/kcwang123/fastly-hosts-adjust/go-spike/internal/scanner"
 )
 
 type Sample struct {
@@ -31,7 +33,7 @@ const minSamples = 5
 const minImprovementPercent = 15.0
 
 func valid(s Sample) bool {
- return s.Service!="" && s.IP!="" && s.Count>=minSamples &&
+ return s.Service!="" && scanner.PublicIPv4(s.IP) && s.Count>=minSamples &&
   s.Failures>=0 && s.Failures<=s.Count && s.TLSVerified &&
   s.MedianMS>0 && s.P95MS>=s.MedianMS &&
   !math.IsNaN(s.MedianMS) && !math.IsInf(s.MedianMS,0) &&
