@@ -1,0 +1,13 @@
+{
+ "admin/services/cdn-optimizer": {
+  "title": "CDN Diagnostics",
+  "order": 85,
+  "action": {
+   "type": "view",
+   "path": "cdn-optimizer/overview"
+  },
+  "depends": {
+   "acl": ["luci-app-cdn-optimizer"]
+  }
+ }
+}
