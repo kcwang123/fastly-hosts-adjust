@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go-spike/go.mod
-      - name: Produce static arm64 candidate
+      - name: Produce static ARM64 candidate
         working-directory: go-spike
         env:
           CGO_ENABLED: "0"
@@ -34,7 +34,7 @@ jobs:
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go test ./cmd/fastly-public-health ./internal/probe ./internal/scanner
           go build -trimpath -ldflags="-s -w" -o "$RUNNER_TEMP/fastly-public-health" ./cmd/fastly-public-health
           sha256sum "$RUNNER_TEMP/fastly-public-health"
-      - name: Fetch pinned OpenWrt SDK and verify checksum
+      - name: Download pinned official SDK
         env:
           SDK_SHA256: e51af2eff648e0f6ee8d8a918ed0973105a11daa9fe63e31eb52e315ca852fe5
         run: |
@@ -44,7 +44,7 @@ jobs:
           echo "$SDK_SHA256  $RUNNER_TEMP/$sdk" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/sdk"
           tar -xJf "$RUNNER_TEMP/$sdk" -C "$RUNNER_TEMP/sdk" --strip-components=1
-      - name: Build SDK IPK and inspect manifest
+      - name: Build and inspect IPK
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
@@ -75,16 +75,7 @@ jobs:
           tar -xzf "$data" -C unpack/data
           test -f unpack/control/control
           grep -qx 'Architecture: aarch64_cortex-a53' unpack/control/control
-          grep -q '^Package: cdn-optimizer
-          file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
-          cat SHA256SUMS BUILD-IDENTITY.txt FILE-TYPES.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: openwrt-filogic-sdk-ipk-${{ github.event.pull_request.head.sha || github.sha }}
-          path: |
-            ${{ runner.temp }}/sdk-evidence/
-          retention-days: 7
- unpack/control/control
+          grep -qx 'Package: cdn-optimizer' unpack/control/control
           test -x unpack/data/usr/bin/fastly-public-health
           test -x unpack/data/usr/libexec/cdn-optimizer/run-once
           test -x unpack/data/usr/libexec/rpcd/cdn-optimizer
@@ -94,9 +85,9 @@ jobs:
           cp unpack/control/control IPK-CONTROL.txt
           file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
           cat SHA256SUMS BUILD-IDENTITY.txt FILE-TYPES.txt
+          rm -rf unpack
       - uses: actions/upload-artifact@v4
         with:
-          name: openwrt-filogic-sdk-ipk-${{ github.sha }}
-          path: |
-            ${{ runner.temp }}/sdk-evidence/
+          name: openwrt-filogic-sdk-ipk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/sdk-evidence/
           retention-days: 7
