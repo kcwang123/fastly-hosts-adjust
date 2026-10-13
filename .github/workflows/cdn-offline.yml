@@ -6,6 +6,7 @@ on:
       - "openwrt/luci-app-cdn-optimizer/**"
       - "tests/test_cdn_optimizer_scaffold.py"
       - "tests/test_cdn_runner_offline.py"
+      - "docs/ROUTER_B0_READONLY_PREFLIGHT.md"
       - ".github/workflows/cdn-offline.yml"
   workflow_dispatch:
 permissions:
@@ -19,6 +20,15 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_cdn_optimizer_scaffold.py' -v
       - name: Isolated one-shot runtime tests (mocked, no public traffic)
         run: python3 -m unittest discover -s tests -p 'test_cdn_runner_offline.py' -v
+      - name: B0 document safety gates
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("docs/ROUTER_B0_READONLY_PREFLIGHT.md").read_text()
+          for required in ("opkg print-architecture", "ubus call system board", "ip -6 rule show", "B Upload", "C Installation", "D Public Probe", "E DNS", "No-Go", "OFFLINE ONLY"):
+              assert required in p, required
+          assert "No ping" in p
+          PY
       - name: BusyBox-compatible shell syntax
         run: |
           sh -n openwrt/cdn-optimizer/files/etc/init.d/cdn-optimizer
