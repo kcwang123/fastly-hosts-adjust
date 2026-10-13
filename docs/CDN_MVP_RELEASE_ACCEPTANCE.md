@@ -59,3 +59,18 @@ Only GitHub code and documentation were modified in this iteration. No router op
 - CI run 38437888881 SUCCESS, artifact 11833134098 source commit matches head and ZIP digest SHA256 5ae269562bbf0c17608787e172ce1ffea257ad9f081a43d4b4d9e585b3169222.
 - Workflow asserts architecture `aarch64_cortex-a53`, package names, packaged static ARM64 binary, required executable/assets, and emits SHA256SUMS, BUILD-IDENTITY.txt and IPK control manifests.
 - Archive contents have NOT been independently downloaded/rehash-verified here; per-IPK SHA256 and actual installed dependency set remain unverified until contents inspected. No Router upload/install authority.
+
+
+## Stage C runtime acceptance, operator evidence 2026-10-14
+- KCHomeMainAP OpenWrt 23.05.3; new rpcd plugin SHA256 `721a034c1ebf275eceb88637b0626cf9527d7af38b469d37a669969d765f1081` matches staged IPK.
+- One authorized rpcd restart completed. Immediate ubus lookup briefly returned Not found; a later read-only check confirmed rpcd running, `cdn-optimizer` exports **status only**, status returns `{"schema_version":1,"status":"not_tested","safe_to_apply":false}`; both UCI safety flags remain 0.
+- Explicit negative call `ubus call cdn-optimizer scan` returned `Method not found`; it did not execute a public probe.
+- Stage C rpcd basic runtime PASS. Browser console and authenticated non-admin ACL remain separate gates. No further restart authorization; **do not rerun** the operator restart script.
+- New offline helper `tools/cdn_rpcd_readiness.py` performs up to 12 bounded *read-only* SSH checks (default interval 2s) with exact plugin hash and UCI fail-closed gates; focused mock tests cover immediate/delayed readiness, timeout and unsafe results. This is new GitHub-only tooling, not a rerun on Router.
+- Installed `opkg status cdn-optimizer` records Depends `libc, ca-bundle` despite new staged IPK control Depends `libc, ca-bundle, jsonfilter`. Jsonfilter is installed. Track metadata drift without manual DB edits or blind reinstall; root cause not conclusively identified.
+
+## Pending operator read-only LuCI / ACL acceptance
+1. In authenticated existing admin session, open `/cgi-bin/luci/admin/services/cdn-optimizer` and child `results`, `settings` routes. Verify Overview Disabled / Not Tested, Results empty state, Settings disabled flags, and correct *Configuration unavailable* message only when UCI fetch genuinely fails.
+2. Open browser DevTools Console + Network. Collect any JS exceptions, failed ubus calls and HTTP errors while navigating **without Save/Apply/Probe**. Redact cookies, session IDs, keys and authorization headers; do not export a raw HAR.
+3. ACL: if an existing limited-permission account is available, open a separate private session and verify only intended read capability; use session access inspection or safe UI navigation for write denial. **Do not send a mutating UCI request as a permission test.** If no suitable user exists, mark session-level negative test BLOCKED and retain static ACL evidence.
+4. Keep PR #2 Draft; no production apply, no Stage E, no merge. Every installed-vs-GitHub code delta requires separate package/redeploy authorization.
