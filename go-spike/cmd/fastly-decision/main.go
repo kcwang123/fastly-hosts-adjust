@@ -5,6 +5,7 @@ import (
  "encoding/json"
  "errors"
  "flag"
+ "io"
  "fmt"
  "os"
 
@@ -29,8 +30,11 @@ func main(){
  filename:=flag.String("input","","local JSON evidence file")
  flag.Parse()
  if *filename==""||flag.NArg()!=0 {fmt.Fprintln(os.Stderr,"--input required, no positional arguments");os.Exit(2)}
- // This binary has no sockets or router writers. Strict decoding imposes a 1MiB cap.
- data,err:=os.ReadFile(*filename)
+ // Open only a local evidence file, bounded before JSON decoding.
+ file,err:=os.Open(*filename)
+ if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+ defer file.Close()
+ data,err:=io.ReadAll(io.LimitReader(file,strictjson.MaxBytes+1))
  if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}
  out,err:=evaluate(data)
  if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}
