@@ -19,6 +19,8 @@ mkdir -m 0700 -p "$STATE"
 chmod 0700 "$STATE"
 [ ! -L "$STATE/result.json" ] || exit 4
 TMP="$(mktemp "$STATE/.result.XXXXXX")"
+# Discard previous success before any new attempt (including UCI/validation failures).
+rm -f "$STATE/result.json"
 cleanup() { rm -f "$TMP"; rmdir "$LOCK" 2>/dev/null || :; }
 trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
