@@ -49,6 +49,9 @@ class OfflinePackagingContract(unittest.TestCase):
         self.assertIn("CDN_OPTIMIZER_SHA256", makefile)
         self.assertIn("sha256sum -c -", makefile)
         self.assertIn("$(INSTALL_BIN) $(CDN_OPTIMIZER_BIN)", makefile)
+        for line in makefile.splitlines():
+            if "$(INSTALL_" in line:
+                self.assertTrue(line.startswith("\\t"), "OpenWrt Makefile recipe requires tab")
         self.assertNotIn("uci commit", makefile)
 
     def test_manual_runner_contract(self):
