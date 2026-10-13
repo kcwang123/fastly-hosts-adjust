@@ -5,6 +5,7 @@ on:
       - "openwrt/cdn-optimizer/**"
       - "openwrt/luci-app-cdn-optimizer/**"
       - "tests/test_cdn_optimizer_scaffold.py"
+      - "tests/test_cdn_runner_offline.py"
       - ".github/workflows/cdn-offline.yml"
   workflow_dispatch:
 permissions:
@@ -16,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Static unit contracts
         run: python3 -m unittest discover -s tests -p 'test_cdn_optimizer_scaffold.py' -v
+      - name: Isolated one-shot runtime tests (mocked, no public traffic)
+        run: python3 -m unittest discover -s tests -p 'test_cdn_runner_offline.py' -v
       - name: BusyBox-compatible shell syntax
         run: |
           sh -n openwrt/cdn-optimizer/files/etc/init.d/cdn-optimizer
