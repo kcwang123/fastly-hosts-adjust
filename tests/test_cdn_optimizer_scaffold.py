@@ -26,13 +26,20 @@ class OfflinePackagingContract(unittest.TestCase):
 
     def test_menu_view_is_read_only(self):
         menu = json.loads((LUCI / "root/usr/share/luci/menu.d/luci-app-cdn-optimizer.json").read_text())
-        self.assertEqual(menu["admin/services/cdn-optimizer"]["action"]["path"], "cdn-optimizer/overview")
+        for page in ("overview", "results", "settings"):
+            key = "admin/services/cdn-optimizer" + ("/" + page if page != "overview" else "")
+            self.assertEqual(menu[key]["action"]["path"], "cdn-optimizer/" + page)
         code = (LUCI / "htdocs/luci-static/resources/view/cdn-optimizer/overview.js").read_text()
         self.assertIn("fs.read('/tmp/cdn-optimizer/result.json')", code)
         self.assertNotIn("fs.exec", code)
         self.assertNotIn("fs.write", code)
         self.assertNotIn("uci.set", code)
         self.assertNotIn("rpc.declare", code)
+        for page in ("results", "settings"):
+            script = (LUCI / "htdocs/luci-static/resources/view/cdn-optimizer" / (page + ".js")).read_text()
+            self.assertNotIn("fs.exec", script)
+            self.assertNotIn("uci.set", script)
+            self.assertNotIn("fs.write", script)
 
     def test_package_is_explicitly_passive(self):
         makefile = (CDN / "Makefile").read_text()
