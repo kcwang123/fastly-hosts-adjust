@@ -5,6 +5,7 @@ umask 077
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 STATE=/tmp/cdn-optimizer
 LOCK=/tmp/cdn-optimizer.lock
+[ "$(id -u)" = 0 ] || { echo "root execution required" >&2; exit 4; }
 [ "$#" -eq 1 ] && [ "$1" = "--manual-public-probe-authorized" ] || { echo "separate manual approval required" >&2; exit 2; }
 [ ! -L "$STATE" ] || exit 4
 if ! mkdir "$LOCK" 2>/dev/null; then
