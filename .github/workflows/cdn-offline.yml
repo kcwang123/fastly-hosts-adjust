@@ -21,4 +21,4 @@ jobs:
           sh -n openwrt/cdn-optimizer/files/etc/init.d/cdn-optimizer
           sh -n openwrt/cdn-optimizer/files/usr/libexec/cdn-optimizer/status
       - name: JavaScript syntax
-        run: node --check openwrt/luci-app-cdn-optimizer/htdocs/luci-static/resources/view/cdn-optimizer/overview.js
+        run: for file in openwrt/luci-app-cdn-optimizer/htdocs/luci-static/resources/view/cdn-optimizer/*.js; do node --check "$file"; done
