@@ -26,7 +26,7 @@ class RunnerOfflineRuntime(unittest.TestCase):
         source=source.replace("LOCK=/tmp/cdn-optimizer.lock", f"LOCK={self.root}/lock")
         source=source.replace("PATH=/usr/sbin:/usr/bin:/sbin:/bin", f"PATH={self.bin}:/usr/sbin:/usr/bin:/sbin:/bin")
         source=source.replace('[ "$(id -u)" = 0 ]', '[ "0" = 0 ]')  # fixture-only root gate
-        source=source.replace('[ "$(stat -c %u "$STATE")" = 0 ]', '[ "0" = 0 ]')  # fixture-only ownership gate
+        source=source.replace('[ "$3" = 0 ] && [ "$4" = 0 ]', '[ "$3" = "$(id -u)" ] && [ "$4" = "$(id -g)" ]')  # fixture-only UID/GID
         source=source.replace("/usr/bin/fastly-public-health --service", f"{self.bin}/fastly-public-health --service")
         self.script=self.root/"runner"
         self.script.write_text(source)
@@ -35,6 +35,10 @@ class RunnerOfflineRuntime(unittest.TestCase):
         env["MOCK_PROBE"]=probe
         return subprocess.run(["sh",str(self.script),*(["--manual-public-probe-authorized"] if args is None else args)],
                               env=env,text=True,capture_output=True,timeout=4)
+    def test_script_has_no_stat_dependency(self):
+        self.assertNotIn("stat -c", self.script.read_text())
+        self.assertIn("ls -ldn", self.script.read_text())
+
     def test_success_then_failure_invalidates_stale_status(self):
         good=self.run_script()
         self.assertEqual(good.returncode,0,good.stderr)
