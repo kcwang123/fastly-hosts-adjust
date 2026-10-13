@@ -1,18 +1,20 @@
 'use strict';
 'require view';
-'require fs';
+'require rpc';
 'require ui';
+
+var callStatus = rpc.declare({ object: 'cdn-optimizer', method: 'status', expect: { '': {} } });
 
 return view.extend({
  load: function() {
   // Restricted rpcd 'file.read' ACL grants access only to this exact path.
-  return fs.read('/tmp/cdn-optimizer/result.json').catch(function() { return null; });
+  return callStatus().catch(function() { return null; });
  },
  render: function(result) {
   var message = _('No active CDN measurements. No DNS changes are permitted.');
   if (result) {
    try {
-    var report = JSON.parse(result);
+    var report = result;
     // Do not render arbitrary server-provided markup.
     if (report.safe_to_apply === false && report.schema_version === 1) {
      var status = report.status || 'unknown';
