@@ -48,7 +48,7 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          set -eu
+          set -eux
           sdk="$RUNNER_TEMP/sdk"
           mkdir -p "$sdk/package/cdn-optimizer"
           cp -a openwrt/cdn-optimizer/. "$sdk/package/cdn-optimizer/"
