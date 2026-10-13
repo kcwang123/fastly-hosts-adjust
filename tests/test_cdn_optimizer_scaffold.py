@@ -62,6 +62,8 @@ class OfflinePackagingContract(unittest.TestCase):
         self.assertIn('[ "$(id -u)" = 0 ]', script)
         self.assertLess(script.index('mkdir "$LOCK"'), script.index('mkdir -p "$STATE"'))
         self.assertIn('wc -c < "$TMP"', script)
+        self.assertIn('stat -c %u "$STATE"', script)
+        self.assertIn('chmod 0700 "$STATE"', script)
         self.assertIn('[ ! -L "$STATE/result.json" ]', script)
         makefile = (CDN / "Makefile").read_text()
         self.assertIn("run-once", makefile)
