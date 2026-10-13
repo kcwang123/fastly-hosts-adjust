@@ -28,6 +28,12 @@ jobs:
           for required in ("opkg print-architecture", "ubus call system board", "ip -6 rule show", "B Upload", "C Installation", "D Public Probe", "E DNS", "No-Go", "OFFLINE ONLY"):
               assert required in p, required
           assert "No ping" in p
+          assert "Reconcile the LIVE PR head" in p
+          assert "opkg status rpcd" in p
+          assert "opkg status luci-base" in p
+          assert "opkg print-architecture" in p
+          assert "STOP" in p and "ABI" in p
+          assert "do not SSH" in p
           PY
       - name: BusyBox-compatible shell syntax
         run: |
