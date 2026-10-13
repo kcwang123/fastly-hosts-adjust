@@ -13,8 +13,10 @@ if ! mkdir "$LOCK" 2>/dev/null; then
   exit 3
 fi
 [ ! -L "$STATE" ] || exit 4
-mkdir -p "$STATE"
+mkdir -m 0700 -p "$STATE"
 [ -d "$STATE" ] && [ ! -L "$STATE" ] || exit 4
+[ "$(stat -c %u "$STATE")" = 0 ] || { echo "unsafe state ownership" >&2; exit 4; }
+chmod 0700 "$STATE"
 [ ! -L "$STATE/result.json" ] || exit 4
 TMP="$STATE/.result.$"
 cleanup() { rm -f "$TMP"; rmdir "$LOCK" 2>/dev/null || :; }
