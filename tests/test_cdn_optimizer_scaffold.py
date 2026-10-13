@@ -59,11 +59,11 @@ class OfflinePackagingContract(unittest.TestCase):
 
     def test_manual_runner_contract(self):
         script = (CDN / "files/usr/libexec/cdn-optimizer/run-once").read_text()
-        for expected in ("--manual-public-probe-authorized", "allow_public_probe", 'mkdir "$LOCK"', 'mv -f "$TMP" "$STATE/result.json"', 'rm -f "$STATE/result.json"'):
+        for expected in ("--manual-public-probe-authorized", "allow_public_probe", 'mkdir -m 0700 "$LOCK"', 'mv -f "$TMP" "$STATE/result.json"', 'rm -f "$STATE/result.json"'):
             self.assertIn(expected, script)
         self.assertNotIn("eval ", script)
         self.assertIn('[ "$(id -u)" = 0 ]', script)
-        self.assertLess(script.index('mkdir "$LOCK"'), script.index('mkdir -m 0700 -p "$STATE"'))
+        self.assertLess(script.index('mkdir -m 0700 "$LOCK"'), script.index('mkdir -m 0700 -p "$STATE"'))
         self.assertIn('wc -c < "$TMP"', script)
         self.assertNotIn("stat -c", script)
         self.assertIn('LC_ALL=C ls -ldn "$STATE"', script)
