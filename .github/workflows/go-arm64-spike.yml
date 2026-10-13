@@ -5,6 +5,9 @@ on:
     paths: ["go-spike/**", ".github/workflows/go-arm64-spike.yml"]
   pull_request:
     paths: ["go-spike/**", ".github/workflows/go-arm64-spike.yml"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
