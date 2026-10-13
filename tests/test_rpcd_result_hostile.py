@@ -29,7 +29,7 @@ class RpcdHostileFixtures(unittest.TestCase):
             # Use explicit executable shims: no router, no superuser needed.
             (binpath / "ls").write_text(
                 "#!/bin/sh\n"
-                "if [ \"$3\" = \""+str(state)+"\" ]; then echo 'drwx------ 2 0 0 60 Jan 1 00:00 state'; "
+                "if [ \"$2\" = \""+str(state)+"\" ]; then echo 'drwx------ 2 0 0 60 Jan 1 00:00 state'; "
                 "else echo \"-rw------- 1 0 0 100 Jan 1 00:00 result.json\"; fi\n"
             )
             (binpath / "jsonfilter").write_text(
