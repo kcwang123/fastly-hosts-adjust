@@ -1,0 +1,71 @@
+name: OpenWrt 23.05.3 Filogic SDK IPK
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "openwrt/cdn-optimizer/**"
+      - ".github/workflows/openwrt-sdk-ipk.yml"
+      - "go-spike/**"
+permissions:
+  contents: read
+concurrency:
+  group: sdk-ipk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sdk-ipk:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go-spike/go.mod
+      - name: Produce static arm64 candidate
+        working-directory: go-spike
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: arm64
+          GOARM64: v8.0
+          GOPROXY: "off"
+        run: |
+          go test ./cmd/fastly-public-health ./internal/probe ./internal/scanner
+          go build -trimpath -ldflags="-s -w" -o "$RUNNER_TEMP/fastly-public-health" ./cmd/fastly-public-health
+          sha256sum "$RUNNER_TEMP/fastly-public-health"
+      - name: Fetch pinned OpenWrt SDK and verify checksum
+        env:
+          SDK_SHA256: e51af2eff648e0f6ee8d8a918ed0973105a11daa9fe63e31eb52e315ca852fe5
+        run: |
+          set -eu
+          sdk=openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          curl --fail --location --retry 2 --max-time 240 -o "$RUNNER_TEMP/$sdk" "https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/$sdk"
+          echo "$SDK_SHA256  $RUNNER_TEMP/$sdk" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/sdk"
+          tar -xJf "$RUNNER_TEMP/$sdk" -C "$RUNNER_TEMP/sdk" --strip-components=1
+      - name: Build SDK IPK and inspect manifest
+        run: |
+          set -eu
+          sdk="$RUNNER_TEMP/sdk"
+          mkdir -p "$sdk/package/cdn-optimizer"
+          cp -a openwrt/cdn-optimizer/. "$sdk/package/cdn-optimizer/"
+          cd "$sdk"
+          make defconfig
+          binary="$RUNNER_TEMP/fastly-public-health"
+          digest="$(sha256sum "$binary" | cut -d' ' -f1)"
+          make package/cdn-optimizer/compile -j2 V=s CDN_OPTIMIZER_BIN="$binary" CDN_OPTIMIZER_SHA256="$digest"
+          ipk="$(find bin/packages -type f -name 'cdn-optimizer_*.ipk' -print -quit)"
+          test -n "$ipk"
+          mkdir -p "$RUNNER_TEMP/sdk-evidence"
+          cp "$ipk" "$RUNNER_TEMP/sdk-evidence/"
+          cd "$RUNNER_TEMP/sdk-evidence"
+          sha256sum "$(basename "$ipk")" > SHA256SUMS
+          printf 'source=%s\nsdk=23.05.3/mediatek/filogic\n' "$GITHUB_SHA" > BUILD-IDENTITY.txt
+          tar -tzf "$(basename "$ipk")" > IPK-CONTENTS.txt || true
+          file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
+          cat SHA256SUMS BUILD-IDENTITY.txt FILE-TYPES.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-filogic-sdk-ipk-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/sdk-evidence/
+          retention-days: 7
