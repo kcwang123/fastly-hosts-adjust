@@ -1,10 +1,18 @@
 {
- "luci-app-cdn-optimizer": {
-  "description": "Read-only CDN health status",
-  "read": {
-   "ubus": {"file": ["read"]},
-   "file": {"/tmp/cdn-optimizer/result.json": ["read"]},
-   "uci": ["cdn_optimizer"]
+  "luci-app-cdn-optimizer": {
+    "description": "Read-only CDN diagnostics RPC",
+    "read": {
+      "ubus": {
+        "cdn-optimizer": [
+          "status"
+        ],
+        "uci": [
+          "get"
+        ]
+      },
+      "uci": [
+        "cdn_optimizer"
+      ]
+    }
   }
- }
 }
