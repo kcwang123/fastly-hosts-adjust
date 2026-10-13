@@ -1,17 +1,19 @@
 'use strict';
 'require view';
-'require fs';
+'require rpc';
+
+var callStatus = rpc.declare({ object: 'cdn-optimizer', method: 'status', expect: { '': {} } });
 
 return view.extend({
  load: function() {
-  return fs.read('/tmp/cdn-optimizer/result.json').catch(function() { return null; });
+  return callStatus().catch(function() { return null; });
  },
  render: function(text) {
   var state = _('No measurement recorded');
   var detail = _('Probes are disabled until separately authorized.');
   if (text) {
    try {
-    var r = JSON.parse(text);
+    var r = text;
     if (r.schema_version === 1 && r.safe_to_apply === false) {
      state = r.network_executed === true ? (r.error ? _('Failed') : _('Observed')) : _('Not tested');
      detail = _('Service: ') + String(r.service || 'unknown') +
