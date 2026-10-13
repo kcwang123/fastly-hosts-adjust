@@ -29,10 +29,7 @@ func main(){
  filename:=flag.String("input","","local JSON evidence file")
  flag.Parse()
  if *filename==""||flag.NArg()!=0 {fmt.Fprintln(os.Stderr,"--input required, no positional arguments");os.Exit(2)}
- f,err:=os.Open(*filename)
- if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}
- defer f.Close()
- // Restrict input size before parsing. This binary has no sockets or router writers.
+ // This binary has no sockets or router writers. Strict decoding imposes a 1MiB cap.
  data,err:=os.ReadFile(*filename)
  if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}
  out,err:=evaluate(data)
