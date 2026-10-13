@@ -15,7 +15,12 @@ return view.extend({
     var report = JSON.parse(result);
     // Do not render arbitrary server-provided markup.
     if (report.safe_to_apply === false && report.schema_version === 1) {
-     message = _('Evidence status: ') + String(report.status || 'unknown') +
+     var status = report.status || 'unknown';
+     if (report.network_executed === true)
+      status = report.error ? 'failed' : (report.result && report.result.tls_verified === true ? 'healthy' : 'insufficient_evidence');
+     else if (report.network_executed === false)
+      status = 'not_tested';
+     message = _('Evidence status: ') + String(status) +
       ' · ' + _('No changes authorized');
     } else {
      message = _('Untrusted or unsupported report; no changes authorized.');
