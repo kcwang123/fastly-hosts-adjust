@@ -38,6 +38,10 @@ class OfflinePackagingContract(unittest.TestCase):
         makefile = (CDN / "Makefile").read_text()
         self.assertNotIn("Build/Compile\n\tgo", makefile)
         self.assertIn("PKG_NAME:=cdn-optimizer", makefile)
+        self.assertIn("CDN_OPTIMIZER_BIN", makefile)
+        self.assertIn("CDN_OPTIMIZER_SHA256", makefile)
+        self.assertIn("sha256sum -c -", makefile)
+        self.assertIn("$(INSTALL_BIN) $(CDN_OPTIMIZER_BIN)", makefile)
         self.assertNotIn("uci commit", makefile)
 
 
