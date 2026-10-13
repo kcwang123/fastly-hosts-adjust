@@ -1,7 +1,28 @@
 #!/bin/sh
-# Restricted rpcd exec plugin. Exposes only status; no probe or shell execution.
+# Restricted rpcd exec plugin: status only. Never execute public probes here.
 set -eu
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
+fallback='{"schema_version":1,"status":"not_tested","safe_to_apply":false}'
+result=/tmp/cdn-optimizer/result.json
+state=/tmp/cdn-optimizer
+
+safe_status() {
+  [ -d "$state" ] && [ ! -L "$state" ] || return 1
+  set -- $(LC_ALL=C ls -ldn "$state") || return 1
+  [ "$1" = "drwx------" ] && [ "$3" = 0 ] && [ "$4" = 0 ] || return 1
+  [ -f "$result" ] && [ ! -L "$result" ] && [ -r "$result" ] || return 1
+  set -- $(LC_ALL=C ls -ldn "$result") || return 1
+  [ "$1" = "-rw-------" ] && [ "$3" = 0 ] && [ "$4" = 0 ] || return 1
+  size=$(wc -c < "$result") || return 1
+  case "$size" in ''|*[!0-9]*) return 1;; esac
+  [ "$size" -gt 0 ] && [ "$size" -le 16384 ] || return 1
+  command -v jsonfilter >/dev/null 2>&1 || return 1
+  schema=$(jsonfilter -i "$result" -e '@.schema_version' 2>/dev/null) || return 1
+  safe=$(jsonfilter -i "$result" -e '@.safe_to_apply' 2>/dev/null) || return 1
+  mode=$(jsonfilter -i "$result" -e '@.mode' 2>/dev/null) || return 1
+  [ "$schema" = 1 ] && [ "$safe" = false ] && [ "$mode" = read_only ] || return 1
+  cat "$result"
+}
 case "${1:-}" in
   list)
     [ "$#" -eq 1 ] || exit 2
@@ -9,12 +30,7 @@ case "${1:-}" in
     ;;
   call)
     [ "$#" -eq 2 ] && [ "$2" = status ] || exit 2
-    result=/tmp/cdn-optimizer/result.json
-    if [ -f "$result" ] && [ ! -L "$result" ] && [ "$(wc -c < "$result")" -le 16384 ]; then
-      cat "$result"
-    else
-      printf '%s\n' '{"schema_version":1,"status":"not_tested","safe_to_apply":false}'
-    fi
+    safe_status || printf '%s\n' "$fallback"
     ;;
   *) exit 2 ;;
 esac
