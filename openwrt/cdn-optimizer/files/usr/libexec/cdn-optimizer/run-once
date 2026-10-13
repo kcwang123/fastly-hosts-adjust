@@ -5,15 +5,18 @@ umask 077
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 STATE=/tmp/cdn-optimizer
 LOCK=/tmp/cdn-optimizer.lock
-[ "$#" -eq 0 ] || exit 2
+[ "$#" -eq 1 ] && [ "$1" = "--manual-public-probe-authorized" ] || { echo "separate manual approval required" >&2; exit 2; }
+[ ! -L "$STATE" ] || exit 4
 mkdir -p "$STATE"
+[ ! -L "$STATE/result.json" ] || exit 4
 if ! mkdir "$LOCK" 2>/dev/null; then
   echo "scan already running or stale lock; manual inspection required" >&2
   exit 3
 fi
 TMP="$STATE/.result.$$"
 cleanup() { rm -f "$TMP"; rmdir "$LOCK" 2>/dev/null || :; }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 130' HUP INT TERM
 enabled="$(uci -q get cdn_optimizer.main.enabled || :)"
 allow="$(uci -q get cdn_optimizer.main.allow_public_probe || :)"
 [ "$enabled" = 1 ] && [ "$allow" = 1 ] || { echo "probe disabled" >&2; exit 4; }
