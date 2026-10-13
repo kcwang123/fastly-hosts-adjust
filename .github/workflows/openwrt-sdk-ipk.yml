@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: go-spike/go.mod
@@ -43,6 +45,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/sdk"
           tar -xJf "$RUNNER_TEMP/$sdk" -C "$RUNNER_TEMP/sdk" --strip-components=1
       - name: Build SDK IPK and inspect manifest
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -eu
           sdk="$RUNNER_TEMP/sdk"
@@ -59,8 +63,35 @@ jobs:
           cp "$ipk" "$RUNNER_TEMP/sdk-evidence/"
           cd "$RUNNER_TEMP/sdk-evidence"
           sha256sum "$(basename "$ipk")" > SHA256SUMS
-          printf 'source=%s\nsdk=23.05.3/mediatek/filogic\n' "$GITHUB_SHA" > BUILD-IDENTITY.txt
-          tar -tzf "$(basename "$ipk")" > IPK-CONTENTS.txt || true
+          actual="$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)"
+          test "$actual" = "$SOURCE_HEAD_SHA"
+          printf 'source_commit=%s\nsdk=23.05.3/mediatek/filogic\narch=aarch64_cortex-a53\n' "$actual" > BUILD-IDENTITY.txt
+          mkdir -p unpack/control unpack/data
+          tar -xzf "$(basename "$ipk")" -C unpack
+          control="$(find unpack -name control.tar.gz -print -quit)"
+          data="$(find unpack -name data.tar.gz -print -quit)"
+          test -n "$control" && test -n "$data"
+          tar -xzf "$control" -C unpack/control
+          tar -xzf "$data" -C unpack/data
+          test -f unpack/control/control
+          grep -qx 'Architecture: aarch64_cortex-a53' unpack/control/control
+          grep -q '^Package: cdn-optimizer
+          file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
+          cat SHA256SUMS BUILD-IDENTITY.txt FILE-TYPES.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-filogic-sdk-ipk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/sdk-evidence/
+          retention-days: 7
+ unpack/control/control
+          test -x unpack/data/usr/bin/fastly-public-health
+          test -x unpack/data/usr/libexec/cdn-optimizer/run-once
+          test -x unpack/data/usr/libexec/rpcd/cdn-optimizer
+          test -f unpack/data/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json
+          test "$(sha256sum unpack/data/usr/bin/fastly-public-health | cut -d' ' -f1)" = "$digest"
+          find unpack/data -type f -printf '%P\n' | sort > IPK-CONTENTS.txt
+          cp unpack/control/control IPK-CONTROL.txt
           file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
           cat SHA256SUMS BUILD-IDENTITY.txt FILE-TYPES.txt
       - uses: actions/upload-artifact@v4
