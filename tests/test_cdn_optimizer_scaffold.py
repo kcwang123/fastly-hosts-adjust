@@ -25,6 +25,8 @@ class OfflinePackagingContract(unittest.TestCase):
         init = (CDN / "files/etc/init.d/cdn-optimizer").read_text()
         self.assertNotIn("procd_set_param command", init)
         self.assertNotIn("fastly-public-health", init)
+        self.assertNotIn("$(1)/etc/init.d", (CDN / "Makefile").read_text())
+        self.assertNotIn("files/etc/init.d/cdn-optimizer $(1)", (CDN / "Makefile").read_text())
 
     def test_menu_view_is_read_only(self):
         menu = json.loads((LUCI / "root/usr/share/luci/menu.d/luci-app-cdn-optimizer.json").read_text())
