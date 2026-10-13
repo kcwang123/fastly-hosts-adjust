@@ -1,14 +1,20 @@
 #!/bin/sh
-# rpcd exec interface: read-only diagnostic status, no scan action.
+# Restricted rpcd exec plugin. Exposes only status; no probe or shell execution.
 set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
 case "${1:-}" in
- list) printf '%s\n' '{"status":{}}' ;;
- call)
-   [ "${2:-}" = status ] || exit 2
-   if [ -r /tmp/cdn-optimizer/result.json ] && [ ! -L /tmp/cdn-optimizer/result.json ]; then
-     cat /tmp/cdn-optimizer/result.json
-   else
-     printf '%s\n' '{"schema_version":1,"status":"not_tested","safe_to_apply":false}'
-   fi ;;
- *) exit 2;;
+  list)
+    [ "$#" -eq 1 ] || exit 2
+    printf '%s\n' '{"status":{}}'
+    ;;
+  call)
+    [ "$#" -eq 2 ] && [ "$2" = status ] || exit 2
+    result=/tmp/cdn-optimizer/result.json
+    if [ -f "$result" ] && [ ! -L "$result" ] && [ "$(wc -c < "$result")" -le 16384 ]; then
+      cat "$result"
+    else
+      printf '%s\n' '{"schema_version":1,"status":"not_tested","safe_to_apply":false}'
+    fi
+    ;;
+  *) exit 2 ;;
 esac
