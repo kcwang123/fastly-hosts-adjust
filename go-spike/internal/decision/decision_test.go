@@ -15,6 +15,10 @@ func TestEvaluateSafetyGates(t *testing.T){
   {"baseline_error",Sample{Service:"github",IP:"8.8.8.8",Count:6,Failures:1,MedianMS:100,P95MS:200,TLSVerified:true},[]Sample{sample("9.9.9.9",10,20)},"insufficient_evidence",""},
   {"missing_samples",base,[]Sample{{Service:"github",IP:"9.9.9.9",Count:1,MedianMS:10,P95MS:20,TLSVerified:true}},"keep_baseline",""},
   {"unverified_tls",base,[]Sample{{Service:"github",IP:"9.9.9.9",Count:6,MedianMS:10,P95MS:20}},"keep_baseline",""},
+  {"invalid_candidate_ip",base,[]Sample{sample("192.168.1.1",10,20)},"keep_baseline",""},
+  {"shared_address",base,[]Sample{sample("100.64.0.1",10,20)},"keep_baseline",""},
+  {"candidate_failures",base,[]Sample{{Service:"github",IP:"9.9.9.9",Count:6,Failures:1,MedianMS:10,P95MS:20,TLSVerified:true}},"keep_baseline",""},
+  {"invalid_baseline_ip",sample("127.0.0.1",100,200),[]Sample{sample("9.9.9.9",10,20)},"insufficient_evidence",""},
  }
  for _,tc:=range tests {t.Run(tc.name,func(t *testing.T){
   got,err:=Evaluate(tc.baseline,tc.candidates)
