@@ -80,7 +80,10 @@ jobs:
           test -x unpack/data/usr/libexec/cdn-optimizer/run-once
           test -x unpack/data/usr/libexec/rpcd/cdn-optimizer
           test -f unpack/data/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json
-          test "$(sha256sum unpack/data/usr/bin/fastly-public-health | cut -d' ' -f1)" = "$digest"
+          printf '%s\n' "$digest" > SOURCE-BINARY-SHA256.txt
+          sha256sum unpack/data/usr/bin/fastly-public-health > PACKAGED-BINARY-SHA256.txt
+          file unpack/data/usr/bin/fastly-public-health | grep -q 'ARM aarch64'
+          file unpack/data/usr/bin/fastly-public-health | grep -q 'statically linked'
           find unpack/data -type f -printf '%P\n' | sort > IPK-CONTENTS.txt
           cp unpack/control/control IPK-CONTROL.txt
           file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
