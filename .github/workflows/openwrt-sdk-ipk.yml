@@ -91,9 +91,25 @@ jobs:
           file unpack/data/usr/bin/fastly-public-health | grep -q 'statically linked'
           find unpack/data -type f -printf '%P\n' | sort > IPK-CONTENTS.txt
           cp unpack/control/control IPK-CONTROL.txt
+          mkdir -p unpack-luci/control unpack-luci/data
+          tar -xzf "$(basename "$luci_ipk")" -C unpack-luci
+          lcontrol="$(find unpack-luci -name control.tar.gz -print -quit)"
+          ldata="$(find unpack-luci -name data.tar.gz -print -quit)"
+          test -n "$lcontrol" && test -n "$ldata"
+          tar -xzf "$lcontrol" -C unpack-luci/control
+          tar -xzf "$ldata" -C unpack-luci/data
+          grep -qx 'Package: luci-app-cdn-optimizer' unpack-luci/control/control
+          grep -q 'cdn-optimizer' unpack-luci/control/control
+          grep -q 'luci-base' unpack-luci/control/control
+          for page in overview results settings; do
+            test -s "unpack-luci/data/www/luci-static/resources/view/cdn-optimizer/$page.js"
+          done
+          test -s unpack-luci/data/usr/share/luci/menu.d/luci-app-cdn-optimizer.json
+          cp unpack-luci/control/control LUCI-IPK-CONTROL.txt
+          find unpack-luci/data -type f -printf '%P\n' | sort > LUCI-IPK-CONTENTS.txt
           file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
           cat SHA256SUMS BUILD-IDENTITY.txt FILE-TYPES.txt
-          rm -rf unpack
+          rm -rf unpack unpack-luci
       - uses: actions/upload-artifact@v4
         with:
           name: openwrt-filogic-sdk-ipk-${{ github.event.pull_request.head.sha || github.sha }}
