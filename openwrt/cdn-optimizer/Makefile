@@ -11,7 +11,7 @@ define Package/cdn-optimizer
  SECTION:=net
  CATEGORY:=Network
  TITLE:=Read-only CDN diagnostic preflight
- DEPENDS:=+ca-bundle
+ DEPENDS:=+ca-bundle +jsonfilter
 endef
 
 define Package/cdn-optimizer/description
