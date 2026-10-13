@@ -44,3 +44,8 @@ Do not create a new router account, expose session IDs, or broaden ACL for testi
 
 ## Rollback / scope
 Only GitHub code and documentation were modified in this iteration. No router operations. Do not reuse a backup as a full firmware restore. Do not upgrade installed packages or reset services without explicit scope approval.
+
+## 2026-10-14 snapshot hardening follow-up
+- Offline rpcd status uses one bounded shell JSON snapshot for contract checks and response, avoiding separate validation/read path payloads; path validation/open TOCTOU remains theoretically possible. No Router execution.
+- Offline hostile fixtures added (malformed, invalid schema/mode/safe_to_apply, wrong file/dir mode, oversized, symlink). Their mock jsonfilter rejects duplicate keys, but OpenWrt jsonfilter behavior is **not equivalent**: strict duplicate-key rejection remains unverified and should not be claimed as closed.
+- Exact-head SDK IPK must be rebuilt after changes; artifact from head eac4321c (`11832818111`, ZIP digest SHA256 de88ea0c4e32f3dc0aec086cb24f9b7b1bfbd8acc13c11af0e997420b357897e) is previous-head evidence only, not the final package. Archive digest is not the IPK checksum.
