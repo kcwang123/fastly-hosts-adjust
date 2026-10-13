@@ -100,6 +100,28 @@ class OfflinePackagingContract(unittest.TestCase):
             rejected = subprocess.run(["sh", plugin, *args], input="{}", text=True, capture_output=True)
             self.assertNotEqual(rejected.returncode, 0)
 
+    def test_rpcd_result_fail_closed_guards(self):
+        script = (CDN / "files/usr/libexec/rpcd/cdn-optimizer").read_text()
+        self.assertIn('fallback=', script)
+        self.assertIn('[ ! -L "$state" ]', script)
+        self.assertIn('[ ! -L "$result" ]', script)
+        self.assertIn('"-rw-------"', script)
+        self.assertIn('"drwx------"', script)
+        self.assertIn('"$3" = 0', script)
+        self.assertIn('"$4" = 0', script)
+        self.assertIn('"$size" -le 16384', script)
+        self.assertIn('jsonfilter -i "$result"', script)
+        self.assertIn("'@.schema_version'", script)
+        self.assertIn("'@.safe_to_apply'", script)
+        self.assertIn("'@.mode'", script)
+        self.assertIn('[ "$schema" = 1 ]', script)
+        self.assertIn('[ "$safe" = false ]', script)
+        self.assertIn('[ "$mode" = read_only ]', script)
+        self.assertIn('safe_status || printf', script)
+        self.assertIn("+jsonfilter", (CDN / "Makefile").read_text())
+        check = subprocess.run(["sh", "-n", str(CDN / "files/usr/libexec/rpcd/cdn-optimizer")])
+        self.assertEqual(check.returncode, 0)
+
     def test_manual_runner_fails_closed_without_consent(self):
         runner = str(CDN / "files/usr/libexec/cdn-optimizer/run-once")
         # Missing operator gate exits before mkdir, UCI, or any binary invocation.
