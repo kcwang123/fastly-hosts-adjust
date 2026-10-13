@@ -31,9 +31,14 @@ Do not create a new router account, expose session IDs, or broaden ACL for testi
 - [x] LuCI 3 pages basic render.
 - [ ] Non-admin *actual session* ACL acceptance / documented blocked status.
 - [ ] Browser console / network errors verified.
-- [ ] Final exact-head focused tests and all required CI green.
+- [x] Exact-head 89d8a65b: 4/4 required CI SUCCESS; hostile rpcd fixture step explicitly SUCCESS (prior to this docs-only change).
 - [ ] Exact-head IPKs checksums/manifest reissued after code changes and device version checked (if seeking deployment acceptance).
-- [x] Offline implementation: rpcd result requires root-owned 0700 directory, root-owned 0600 file, bounded bytes, and jsonfilter schema_version=1 / safe_to_apply=false / mode=read_only. Package explicitly depends on jsonfilter; offline guards added.\n- [x] Offline hostile-fixture harness added for malformed JSON, duplicate field, oversized payload, invalid contracts, symlink and unavailable parser (its parser is a test double; not evidence of production jsonfilter duplicate-key rejection).\n- [ ] Complete wrong owner/mode hostile fixture cases, verify exact-head CI, and run target OpenWrt jsonfilter contract before device acceptance.\n- [x] Read-once bounded shell payload snapshot: JSON checks and final output use the same captured bytes, reducing validation-to-cat TOCTOU.\n- [ ] Filesystem path metadata check to snapshot-read remains a race under adversarial writable directory conditions; root 0700 state directory mitigates unprivileged replacement, but not hostile root processes.\n- [ ] Production jsonfilter field checks do not guarantee a strict full-schema/duplicate-key validator; do not claim strict JSON validation.
+- [x] Offline implementation: rpcd result requires root-owned 0700 directory, root-owned 0600 file, bounded bytes, and jsonfilter schema_version=1 / safe_to_apply=false / mode=read_only. Package explicitly depends on jsonfilter; offline guards added. 
+- [x] Offline hostile-fixture harness added for malformed JSON, duplicate field, oversized payload, invalid contracts, symlink and unavailable parser (its parser is a test double; not evidence of production jsonfilter duplicate-key rejection). 
+- [ ] Complete wrong owner/mode hostile fixture cases, verify exact-head CI, and run target OpenWrt jsonfilter contract before device acceptance. 
+- [x] Read-once bounded shell payload snapshot: JSON checks and final output use the same captured bytes, reducing validation-to-cat TOCTOU. 
+- [ ] Filesystem path metadata check to snapshot-read remains a race under adversarial writable directory conditions; root 0700 state directory mitigates unprivileged replacement, but not hostile root processes. 
+- [ ] Production jsonfilter field checks do not guarantee a strict full-schema/duplicate-key validator; do not claim strict JSON validation.
 - [ ] Separate explicit authorization for any Stage E network apply.
 - [ ] Merge conditions and owner approval verified; PR remains Draft.
 
@@ -49,3 +54,8 @@ Only GitHub code and documentation were modified in this iteration. No router op
 - Offline rpcd status uses one bounded shell JSON snapshot for contract checks and response, avoiding separate validation/read path payloads; path validation/open TOCTOU remains theoretically possible. No Router execution.
 - Offline hostile fixtures added (malformed, invalid schema/mode/safe_to_apply, wrong file/dir mode, oversized, symlink). Their mock jsonfilter rejects duplicate keys, but OpenWrt jsonfilter behavior is **not equivalent**: strict duplicate-key rejection remains unverified and should not be claimed as closed.
 - Exact-head SDK IPK must be rebuilt after changes; artifact from head eac4321c (`11832818111`, ZIP digest SHA256 de88ea0c4e32f3dc0aec086cb24f9b7b1bfbd8acc13c11af0e997420b357897e) is previous-head evidence only, not the final package. Archive digest is not the IPK checksum.
+
+## Exact-head 89d8a65b SDK evidence
+- CI run 38437888881 SUCCESS, artifact 11833134098 source commit matches head and ZIP digest SHA256 5ae269562bbf0c17608787e172ce1ffea257ad9f081a43d4b4d9e585b3169222.
+- Workflow asserts architecture `aarch64_cortex-a53`, package names, packaged static ARM64 binary, required executable/assets, and emits SHA256SUMS, BUILD-IDENTITY.txt and IPK control manifests.
+- Archive contents have NOT been independently downloaded/rehash-verified here; per-IPK SHA256 and actual installed dependency set remain unverified until contents inspected. No Router upload/install authority.
