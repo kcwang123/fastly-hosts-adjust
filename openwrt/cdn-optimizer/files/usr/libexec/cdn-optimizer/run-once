@@ -18,7 +18,7 @@ mkdir -m 0700 -p "$STATE"
 [ "$(stat -c %u "$STATE")" = 0 ] || { echo "unsafe state ownership" >&2; exit 4; }
 chmod 0700 "$STATE"
 [ ! -L "$STATE/result.json" ] || exit 4
-TMP="$STATE/.result.$"
+TMP="$(mktemp "$STATE/.result.XXXXXX")"
 cleanup() { rm -f "$TMP"; rmdir "$LOCK" 2>/dev/null || :; }
 trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
