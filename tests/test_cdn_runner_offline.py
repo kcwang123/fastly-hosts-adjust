@@ -25,7 +25,8 @@ class RunnerOfflineRuntime(unittest.TestCase):
         source=source.replace("STATE=/tmp/cdn-optimizer", f"STATE={self.root}/state")
         source=source.replace("LOCK=/tmp/cdn-optimizer.lock", f"LOCK={self.root}/lock")
         source=source.replace("PATH=/usr/sbin:/usr/bin:/sbin:/bin", f"PATH={self.bin}:/usr/sbin:/usr/bin:/sbin:/bin")
-        source=source.replace('[ "$(id -u)" = 0 ]', '[ "0" = 0 ]')  # only fixture: simulate root gate
+        source=source.replace('[ "$(id -u)" = 0 ]', '[ "0" = 0 ]')  # fixture-only root gate
+        source=source.replace('[ "$(stat -c %u "$STATE")" = 0 ]', '[ "0" = 0 ]')  # fixture-only ownership gate
         source=source.replace("/usr/bin/fastly-public-health --service", f"{self.bin}/fastly-public-health --service")
         self.script=self.root/"runner"
         self.script.write_text(source)
