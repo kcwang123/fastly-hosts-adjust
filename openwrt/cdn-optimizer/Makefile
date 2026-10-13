@@ -29,14 +29,14 @@ define Build/Compile
 endef
 
 define Package/cdn-optimizer/install
- $(INSTALL_DIR) $(1)/etc/config $(1)/etc/init.d $(1)/usr/bin $(1)/usr/libexec/cdn-optimizer $(1)/usr/libexec/rpcd $(1)/usr/share/rpcd/acl.d
- $(INSTALL_BIN) $(CDN_OPTIMIZER_BIN) $(1)/usr/bin/fastly-public-health
- $(INSTALL_CONF) ./files/etc/config/cdn_optimizer $(1)/etc/config/cdn_optimizer
- $(INSTALL_BIN) ./files/etc/init.d/cdn-optimizer $(1)/etc/init.d/cdn-optimizer
- $(INSTALL_BIN) ./files/usr/libexec/cdn-optimizer/status $(1)/usr/libexec/cdn-optimizer/status
- $(INSTALL_BIN) ./files/usr/libexec/cdn-optimizer/run-once $(1)/usr/libexec/cdn-optimizer/run-once
- $(INSTALL_BIN) ./files/usr/libexec/rpcd/cdn-optimizer $(1)/usr/libexec/rpcd/cdn-optimizer
- $(INSTALL_DATA) ./files/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json $(1)/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json
+	$(INSTALL_DIR) $(1)/etc/config $(1)/etc/init.d $(1)/usr/bin $(1)/usr/libexec/cdn-optimizer $(1)/usr/libexec/rpcd $(1)/usr/share/rpcd/acl.d
+	$(INSTALL_BIN) $(CDN_OPTIMIZER_BIN) $(1)/usr/bin/fastly-public-health
+	$(INSTALL_CONF) ./files/etc/config/cdn_optimizer $(1)/etc/config/cdn_optimizer
+	$(INSTALL_BIN) ./files/etc/init.d/cdn-optimizer $(1)/etc/init.d/cdn-optimizer
+	$(INSTALL_BIN) ./files/usr/libexec/cdn-optimizer/status $(1)/usr/libexec/cdn-optimizer/status
+	$(INSTALL_BIN) ./files/usr/libexec/cdn-optimizer/run-once $(1)/usr/libexec/cdn-optimizer/run-once
+	$(INSTALL_BIN) ./files/usr/libexec/rpcd/cdn-optimizer $(1)/usr/libexec/rpcd/cdn-optimizer
+	$(INSTALL_DATA) ./files/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json $(1)/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json
 endef
 
 $(eval $(call BuildPackage,cdn-optimizer))
