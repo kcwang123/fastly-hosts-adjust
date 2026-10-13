@@ -13,7 +13,8 @@ class OfflinePackagingContract(unittest.TestCase):
         acl = json.loads(path.read_text())
         rule = acl["luci-app-cdn-optimizer"]
         self.assertNotIn("write", rule)
-        self.assertEqual(rule["read"]["file"], {"/tmp/cdn-optimizer/result.json": ["read"]})
+        self.assertEqual(rule["read"]["ubus"]["cdn-optimizer"], ["status"])
+        self.assertNotIn("file", rule["read"])
         self.assertNotIn("exec", str(rule).lower())
 
     def test_disabled_by_default(self):
@@ -30,11 +31,12 @@ class OfflinePackagingContract(unittest.TestCase):
             key = "admin/services/cdn-optimizer" + ("/" + page if page != "overview" else "")
             self.assertEqual(menu[key]["action"]["path"], "cdn-optimizer/" + page)
         code = (LUCI / "htdocs/luci-static/resources/view/cdn-optimizer/overview.js").read_text()
-        self.assertIn("fs.read('/tmp/cdn-optimizer/result.json')", code)
+        self.assertIn("method: 'status'", code)
+        self.assertIn("object: 'cdn-optimizer'", code)
         self.assertNotIn("fs.exec", code)
         self.assertNotIn("fs.write", code)
         self.assertNotIn("uci.set", code)
-        self.assertNotIn("rpc.declare", code)
+        self.assertIn("rpc.declare", code)
         for page in ("results", "settings"):
             script = (LUCI / "htdocs/luci-static/resources/view/cdn-optimizer" / (page + ".js")).read_text()
             self.assertNotIn("fs.exec", script)
