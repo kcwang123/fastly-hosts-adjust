@@ -1,0 +1,6 @@
+config service 'main'
+ option enabled '0'
+ option allow_public_probe '0'
+ option service 'github'
+ option candidate_ip ''
+ option max_bytes '4096'
