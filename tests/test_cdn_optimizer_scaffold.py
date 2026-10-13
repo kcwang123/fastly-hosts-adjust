@@ -56,6 +56,10 @@ class OfflinePackagingContract(unittest.TestCase):
         for expected in ("--manual-public-probe-authorized", "allow_public_probe", 'mkdir "$LOCK"', 'mv -f "$TMP" "$STATE/result.json"', 'rm -f "$STATE/result.json"'):
             self.assertIn(expected, script)
         self.assertNotIn("eval ", script)
+        self.assertIn('[ "$(id -u)" = 0 ]', script)
+        self.assertLess(script.index('mkdir "$LOCK"'), script.index('mkdir -p "$STATE"'))
+        self.assertIn('wc -c < "$TMP"', script)
+        self.assertIn('[ ! -L "$STATE/result.json" ]', script)
         makefile = (CDN / "Makefile").read_text()
         self.assertIn("run-once", makefile)
         self.assertIn("rpcd/cdn-optimizer", makefile)
