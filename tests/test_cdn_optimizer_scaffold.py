@@ -1,5 +1,6 @@
 import json
 import pathlib
+import subprocess
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -72,6 +73,20 @@ class OfflinePackagingContract(unittest.TestCase):
         self.assertIn("rpcd/cdn-optimizer", makefile)
         rpcd = (CDN / "files/usr/libexec/rpcd/cdn-optimizer").read_text()
         self.assertNotIn("run-once", rpcd)
+
+    def test_rpcd_process_contract_offline(self):
+        plugin = str(CDN / "files/usr/libexec/rpcd/cdn-optimizer")
+        listed = subprocess.run(["sh", plugin, "list"], input="{}", text=True, capture_output=True, check=True)
+        self.assertEqual(json.loads(listed.stdout), {"status": {}})
+        for args in (["call", "scan"], ["call", "status", "extra"], ["delete"], []):
+            rejected = subprocess.run(["sh", plugin, *args], input="{}", text=True, capture_output=True)
+            self.assertNotEqual(rejected.returncode, 0)
+
+    def test_manual_runner_fails_closed_without_consent(self):
+        runner = str(CDN / "files/usr/libexec/cdn-optimizer/run-once")
+        # Missing operator gate exits before mkdir, UCI, or any binary invocation.
+        denied = subprocess.run(["sh", runner], text=True, capture_output=True)
+        self.assertNotEqual(denied.returncode, 0)
 
 
 if __name__ == "__main__":
