@@ -17,11 +17,15 @@ safe_status() {
   case "$size" in ''|*[!0-9]*) return 1;; esac
   [ "$size" -gt 0 ] && [ "$size" -le 16384 ] || return 1
   command -v jsonfilter >/dev/null 2>&1 || return 1
-  schema=$(jsonfilter -i "$result" -e '@.schema_version' 2>/dev/null) || return 1
-  safe=$(jsonfilter -i "$result" -e '@.safe_to_apply' 2>/dev/null) || return 1
-  mode=$(jsonfilter -i "$result" -e '@.mode' 2>/dev/null) || return 1
+  # Snapshot once: validate and emit the same bytes, not a second path read.
+  # Shell command substitution strips trailing LF only; JSON remains valid.
+  payload=$(cat "$result") || return 1
+  [ "${#payload}" -le 16384 ] || return 1
+  schema=$(jsonfilter -s "$payload" -e '@.schema_version' 2>/dev/null) || return 1
+  safe=$(jsonfilter -s "$payload" -e '@.safe_to_apply' 2>/dev/null) || return 1
+  mode=$(jsonfilter -s "$payload" -e '@.mode' 2>/dev/null) || return 1
   [ "$schema" = 1 ] && [ "$safe" = false ] && [ "$mode" = read_only ] || return 1
-  cat "$result"
+  printf '%s\\n' "$payload"
 }
 case "${1:-}" in
   list)
