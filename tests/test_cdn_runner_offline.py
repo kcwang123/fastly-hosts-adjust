@@ -65,5 +65,25 @@ class RunnerOfflineRuntime(unittest.TestCase):
         self.assertNotEqual(p.returncode,0)
         self.assertFalse((self.root/"lock").exists())
 
+    def test_lock_cleaned_after_bad_permissions(self):
+        (self.root / 'state').mkdir(mode=0o755)
+        outcome = self.run_script()
+        self.assertNotEqual(outcome.returncode, 0)
+        self.assertFalse((self.root / 'lock').exists())
+
+    def test_lock_cleaned_after_failed_mkdir(self):
+        (self.root / 'state').write_text('file collision')
+        outcome = self.run_script()
+        self.assertNotEqual(outcome.returncode, 0)
+        self.assertFalse((self.root / 'lock').exists())
+
+    def test_lock_cleaned_after_failed_mktemp(self):
+        fake = self.bin / 'mktemp'
+        fake.write_text('#!/bin/sh\nexit 44\n')
+        fake.chmod(0o755)
+        outcome = self.run_script()
+        self.assertNotEqual(outcome.returncode, 0)
+        self.assertFalse((self.root / 'lock').exists())
+
 if __name__=="__main__":
     unittest.main()
