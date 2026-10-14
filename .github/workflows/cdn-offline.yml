@@ -9,6 +9,8 @@ on:
       - "tests/test_rpcd_result_hostile.py"
       - "tests/test_cdn_rpcd_readiness.py"
       - "tests/test_cdn_release_contract.py"
+      - "tests/test_cdn_hook_contract.py"
+      - "tools/test_real_opkg_transaction.sh"
       - "tools/cdn_rpcd_readiness.py"
       - "docs/ROUTER_B0_READONLY_PREFLIGHT.md"
       - ".github/workflows/cdn-offline.yml"
@@ -30,6 +32,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_cdn_rpcd_readiness.py' -v
       - name: Disposable package release upgrade rollback contracts
         run: python3 -m unittest discover -s tests -p 'test_cdn_release_contract.py' -v
+      - name: Package hook and rollback safety contracts
+        run: python3 -m unittest discover -s tests -p 'test_cdn_hook_contract.py' -v
       - name: B0 document safety gates
         run: |
           python3 - <<'PY'
