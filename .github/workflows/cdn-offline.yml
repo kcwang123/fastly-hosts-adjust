@@ -45,6 +45,8 @@ jobs:
           assert "STOP" in p and "ABI" in p
           assert "do not SSH" in p
           PY
+      - name: Disposable opkg transaction harness syntax
+        run: sh -n tools/test_real_opkg_transaction.sh
       - name: BusyBox-compatible shell syntax
         run: |
           sh -n openwrt/cdn-optimizer/files/etc/init.d/cdn-optimizer
