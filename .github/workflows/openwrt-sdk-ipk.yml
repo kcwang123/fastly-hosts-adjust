@@ -1,0 +1,193 @@
+name: OpenWrt 23.05.3 Filogic SDK IPK
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "openwrt/cdn-optimizer/**"
+      - "openwrt/luci-app-cdn-optimizer/**"
+      - ".github/workflows/openwrt-sdk-ipk.yml"
+      - "go-spike/**"
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: sdk-ipk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sdk-ipk:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go-spike/go.mod
+      - name: Produce static ARM64 candidate
+        working-directory: go-spike
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: arm64
+          GOARM64: v8.0
+          GOPROXY: "off"
+        run: |
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go test ./cmd/fastly-public-health ./internal/probe ./internal/scanner
+          go build -trimpath -ldflags="-s -w" -o "$RUNNER_TEMP/fastly-public-health" ./cmd/fastly-public-health
+          sha256sum "$RUNNER_TEMP/fastly-public-health"
+      - name: Download pinned official SDK
+        env:
+          SDK_SHA256: e51af2eff648e0f6ee8d8a918ed0973105a11daa9fe63e31eb52e315ca852fe5
+        run: |
+          set -eu
+          sdk=openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          curl --fail --location --retry 2 --max-time 240 -o "$RUNNER_TEMP/$sdk" "https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/$sdk"
+          echo "$SDK_SHA256  $RUNNER_TEMP/$sdk" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/sdk"
+          tar -xJf "$RUNNER_TEMP/$sdk" -C "$RUNNER_TEMP/sdk" --strip-components=1
+      - name: Build and inspect IPK
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -eux
+          sdk="$RUNNER_TEMP/sdk"
+          mkdir -p "$sdk/package/cdn-optimizer"
+          cp -a openwrt/cdn-optimizer/. "$sdk/package/cdn-optimizer/"
+          mkdir -p "$sdk/package/luci-app-cdn-optimizer"
+          cp -a openwrt/luci-app-cdn-optimizer/. "$sdk/package/luci-app-cdn-optimizer/"
+          cd "$sdk"
+          make defconfig
+          binary="$RUNNER_TEMP/fastly-public-health"
+          digest="$(sha256sum "$binary" | cut -d' ' -f1)"
+          make package/cdn-optimizer/compile -j2 V=s CDN_OPTIMIZER_BIN="$binary" CDN_OPTIMIZER_SHA256="$digest"
+          make package/luci-app-cdn-optimizer/compile -j2 V=s CDN_OPTIMIZER_BIN="$binary" CDN_OPTIMIZER_SHA256="$digest"
+          ipk="$(find bin/packages -type f -name 'cdn-optimizer_*.ipk' -print -quit)"
+          test -n "$ipk"
+          luci_ipk="$(find bin/packages -type f -name 'luci-app-cdn-optimizer_*.ipk' -print -quit)"
+          test -n "$luci_ipk"
+          mkdir -p "$RUNNER_TEMP/sdk-evidence"
+          cp "$ipk" "$luci_ipk" "$RUNNER_TEMP/sdk-evidence/"
+          cd "$RUNNER_TEMP/sdk-evidence"
+          sha256sum "$(basename "$ipk")" "$(basename "$luci_ipk")" > SHA256SUMS
+          actual="$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)"
+          test "$actual" = "$SOURCE_HEAD_SHA"
+          printf 'source_commit=%s\nsdk=23.05.3/mediatek/filogic\narch=aarch64_cortex-a53\n' "$actual" > BUILD-IDENTITY.txt
+          mkdir -p unpack/control unpack/data
+          tar -xzf "$(basename "$ipk")" -C unpack
+          control="$(find unpack -name control.tar.gz -print -quit)"
+          data="$(find unpack -name data.tar.gz -print -quit)"
+          test -n "$control" && test -n "$data"
+          tar -xzf "$control" -C unpack/control
+          tar -xzf "$data" -C unpack/data
+          test -f unpack/control/control
+          grep -qx 'Architecture: aarch64_cortex-a53' unpack/control/control
+          grep -qx 'Package: cdn-optimizer' unpack/control/control
+          grep -qx 'Version: 0.1.0-2' unpack/control/control
+          grep -qx 'Depends: libc, ca-bundle, jsonfilter' unpack/control/control
+          for hook in postinst prerm; do
+            test -f "unpack/control/$hook"
+            sh -n "unpack/control/$hook"
+          done
+          grep -Fq 'IPKG_NO_SCRIPT' unpack/control/postinst
+          grep -Fq 'default_prerm' unpack/control/prerm
+          cp unpack/control/postinst CORE-POSTINST.txt
+          cp unpack/control/prerm CORE-PRERM.txt
+          test -f unpack/control/conffiles
+          grep -qx '/etc/config/cdn_optimizer' unpack/control/conffiles
+          test -x unpack/data/usr/bin/fastly-public-health
+          test -x unpack/data/usr/libexec/cdn-optimizer/run-once
+          test -x unpack/data/usr/libexec/rpcd/cdn-optimizer
+          test -f unpack/data/usr/share/rpcd/acl.d/luci-app-cdn-optimizer.json
+          printf '%s\n' "$digest" > SOURCE-BINARY-SHA256.txt
+          sha256sum unpack/data/usr/bin/fastly-public-health > PACKAGED-BINARY-SHA256.txt
+          file unpack/data/usr/bin/fastly-public-health | grep -q 'ARM aarch64'
+          file unpack/data/usr/bin/fastly-public-health | grep -q 'statically linked'
+          find unpack/data -type f -printf '%P\n' | sort > IPK-CONTENTS.txt
+          cp unpack/control/control IPK-CONTROL.txt
+          mkdir -p unpack-luci/control unpack-luci/data
+          tar -xzf "$(basename "$luci_ipk")" -C unpack-luci
+          lcontrol="$(find unpack-luci -name control.tar.gz -print -quit)"
+          ldata="$(find unpack-luci -name data.tar.gz -print -quit)"
+          test -n "$lcontrol" && test -n "$ldata"
+          tar -xzf "$lcontrol" -C unpack-luci/control
+          tar -xzf "$ldata" -C unpack-luci/data
+          for hook in postinst prerm; do
+            test -f "unpack-luci/control/$hook"
+            sh -n "unpack-luci/control/$hook"
+          done
+          grep -Fq 'IPKG_NO_SCRIPT' unpack-luci/control/postinst
+          grep -Fq 'default_prerm' unpack-luci/control/prerm
+          cp unpack-luci/control/postinst LUCI-POSTINST.txt
+          cp unpack-luci/control/prerm LUCI-PRERM.txt
+          grep -qx 'Package: luci-app-cdn-optimizer' unpack-luci/control/control
+          grep -qx 'Version: 0.1.0-2' unpack-luci/control/control
+          grep -qx 'Architecture: all' unpack-luci/control/control
+          grep -qx 'Depends: libc, cdn-optimizer, luci-base' unpack-luci/control/control
+          grep -q 'cdn-optimizer' unpack-luci/control/control
+          grep -q 'luci-base' unpack-luci/control/control
+          for page in overview results settings; do
+            test -s "unpack-luci/data/www/luci-static/resources/view/cdn-optimizer/$page.js"
+          done
+          test -s unpack-luci/data/usr/share/luci/menu.d/luci-app-cdn-optimizer.json
+          cp unpack-luci/control/control LUCI-IPK-CONTROL.txt
+          find unpack-luci/data -type f -printf '%P\n' | sort > LUCI-IPK-CONTENTS.txt
+          file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
+          cat SHA256SUMS BUILD-IDENTITY.txt FILE-TYPES.txt
+          rm -rf unpack unpack-luci
+      - name: Fetch original pre-jsonfilter 0.1.0-1 rollback artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/old-ipk"
+          curl --fail --silent --show-error --location --retry 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -o "$RUNNER_TEMP/original-ipks.zip" \
+            "https://api.github.com/repos/kcwang123/fastly-hosts-adjust/actions/artifacts/11797951884/zip"
+          unzip -q "$RUNNER_TEMP/original-ipks.zip" -d "$RUNNER_TEMP/old-ipk"
+      - name: Real opkg transaction inside sealed disposable container
+        env:
+          OLD_CORE_SHA256: 3155717f93f9289b3bd3ce0965ee532f915237bc4a313c1fb5dd6db897ab3f70
+          OLD_LUCI_SHA256: e43f17b70e54766214d244d1492ce3eda0db7908b50ccaaa51a56b9d8ad96c73
+        run: |
+          set -euo pipefail
+          old="$RUNNER_TEMP/old-ipk"
+          evidence="$RUNNER_TEMP/sdk-evidence"
+          sdkhost="$RUNNER_TEMP/sdk/staging_dir/host"
+          test -x "$sdkhost/bin/opkg" || { echo REAL_OPKG_BINARY_NOT_FOUND; exit 47; }
+          file "$sdkhost/bin/opkg"
+          readlink -f "$sdkhost/bin/opkg"
+          echo "$OLD_CORE_SHA256  $old/cdn-optimizer_0.1.0-1_aarch64_cortex-a53.ipk" | sha256sum -c -
+          echo "$OLD_LUCI_SHA256  $old/luci-app-cdn-optimizer_0.1.0-1_all.ipk" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/opkg-transaction-input"
+          input="$RUNNER_TEMP/opkg-transaction-input"
+          cp "$old/"*.ipk "$input/"
+          cp "$evidence/"*.ipk "$input/"
+          # All package scripts run ONLY inside Docker container with no host service mounts.
+          for mode in none partial_upgrade missing_snapshot tampered_snapshot; do
+            docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 64 --memory 256m --cpus 1 \
+            --tmpfs /work:rw,exec,nosuid,nodev,size=64m \
+            --tmpfs /tmp:rw,nosuid,nodev,size=16m \
+            --mount "type=bind,src=$sdkhost,dst=/sdkhost,readonly" \
+            --mount "type=bind,src=$input,dst=/inputs,readonly" \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/tools/test_real_opkg_transaction.sh,dst=/test.sh,readonly" \
+              -e INJECT_FAILURE="$mode" \
+              -e OPKG_BIN=/sdkhost/bin/opkg \
+            -e OLD_CORE=/inputs/cdn-optimizer_0.1.0-1_aarch64_cortex-a53.ipk \
+            -e OLD_LUCI=/inputs/luci-app-cdn-optimizer_0.1.0-1_all.ipk \
+            -e NEW_CORE=/inputs/cdn-optimizer_0.1.0-2_aarch64_cortex-a53.ipk \
+            -e NEW_LUCI=/inputs/luci-app-cdn-optimizer_0.1.0-2_all.ipk \
+            ubuntu:22.04 sh /test.sh | tee "$evidence/OPKG-TRANSACTION-$mode.txt"
+          done
+          grep -qx REAL_OPKG_TRANSACTION_PASS "$evidence/OPKG-TRANSACTION-none.txt"
+          grep -qx INJECT_PARTIAL_UPGRADE_DETECTED_BLOCK_OPERATOR_RECOVERY "$evidence/OPKG-TRANSACTION-partial_upgrade.txt"
+          grep -qx INJECT_MISSING_SNAPSHOT_BLOCK_BEFORE_DOWNGRADE "$evidence/OPKG-TRANSACTION-missing_snapshot.txt"
+          grep -qx INJECT_TAMPERED_SNAPSHOT_HASH_BLOCK_BEFORE_DOWNGRADE "$evidence/OPKG-TRANSACTION-tampered_snapshot.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-filogic-sdk-ipk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/sdk-evidence/
+          retention-days: 7

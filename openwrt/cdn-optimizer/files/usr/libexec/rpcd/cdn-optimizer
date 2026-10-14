@@ -1,0 +1,40 @@
+#!/bin/sh
+# Restricted rpcd exec plugin: status only. Never execute public probes here.
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+fallback='{"schema_version":1,"status":"not_tested","safe_to_apply":false}'
+result=/tmp/cdn-optimizer/result.json
+state=/tmp/cdn-optimizer
+
+safe_status() {
+  [ -d "$state" ] && [ ! -L "$state" ] || return 1
+  set -- $(LC_ALL=C ls -ldn "$state") || return 1
+  [ "$1" = "drwx------" ] && [ "$3" = 0 ] && [ "$4" = 0 ] || return 1
+  [ -f "$result" ] && [ ! -L "$result" ] && [ -r "$result" ] || return 1
+  set -- $(LC_ALL=C ls -ldn "$result") || return 1
+  [ "$1" = "-rw-------" ] && [ "$3" = 0 ] && [ "$4" = 0 ] || return 1
+  size=$(wc -c < "$result") || return 1
+  case "$size" in ''|*[!0-9]*) return 1;; esac
+  [ "$size" -gt 0 ] && [ "$size" -le 16384 ] || return 1
+  command -v jsonfilter >/dev/null 2>&1 || return 1
+  # Snapshot once: validate and emit the same bytes, not a second path read.
+  # Shell command substitution strips trailing LF only; JSON remains valid.
+  payload=$(cat "$result") || return 1
+  [ "${#payload}" -le 16384 ] || return 1
+  schema=$(jsonfilter -s "$payload" -e '@.schema_version' 2>/dev/null) || return 1
+  safe=$(jsonfilter -s "$payload" -e '@.safe_to_apply' 2>/dev/null) || return 1
+  mode=$(jsonfilter -s "$payload" -e '@.mode' 2>/dev/null) || return 1
+  [ "$schema" = 1 ] && [ "$safe" = false ] && [ "$mode" = read_only ] || return 1
+  printf '%s\n' "$payload"
+}
+case "${1:-}" in
+  list)
+    [ "$#" -eq 1 ] || exit 2
+    printf '%s\n' '{"status":{}}'
+    ;;
+  call)
+    [ "$#" -eq 2 ] && [ "$2" = status ] || exit 2
+    safe_status || printf '%s\n' "$fallback"
+    ;;
+  *) exit 2 ;;
+esac

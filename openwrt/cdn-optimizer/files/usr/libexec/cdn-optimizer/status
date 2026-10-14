@@ -1,0 +1,13 @@
+#!/bin/sh
+# Read-only, bounded status; no shell arguments used as commands.
+set -eu
+case "${1:-}" in
+ status)
+  if [ -r /tmp/cdn-optimizer/result.json ]; then
+    cat /tmp/cdn-optimizer/result.json
+  else
+    printf '%s\n' '{"schema_version":1,"status":"not_tested","safe_to_apply":false}'
+  fi
+  ;;
+ *) exit 2;;
+esac

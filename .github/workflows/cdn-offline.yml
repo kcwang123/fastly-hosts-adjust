@@ -1,0 +1,61 @@
+name: CDN OpenWrt offline scaffold checks
+on:
+  pull_request:
+    paths:
+      - "openwrt/cdn-optimizer/**"
+      - "openwrt/luci-app-cdn-optimizer/**"
+      - "tests/test_cdn_optimizer_scaffold.py"
+      - "tests/test_cdn_runner_offline.py"
+      - "tests/test_rpcd_result_hostile.py"
+      - "tests/test_cdn_rpcd_readiness.py"
+      - "tests/test_cdn_release_contract.py"
+      - "tests/test_cdn_hook_contract.py"
+      - "tools/test_real_opkg_transaction.sh"
+      - "tools/cdn_rpcd_readiness.py"
+      - "docs/ROUTER_B0_READONLY_PREFLIGHT.md"
+      - ".github/workflows/cdn-offline.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static unit contracts
+        run: python3 -m unittest discover -s tests -p 'test_cdn_optimizer_scaffold.py' -v
+      - name: Isolated one-shot runtime tests (mocked, no public traffic)
+        run: python3 -m unittest discover -s tests -p 'test_cdn_runner_offline.py' -v
+      - name: Hostile rpcd result fixtures (isolated)
+        run: python3 -m unittest discover -s tests -p 'test_rpcd_result_hostile.py' -v
+      - name: Bounded rpcd read-only readiness tests
+        run: python3 -m unittest discover -s tests -p 'test_cdn_rpcd_readiness.py' -v
+      - name: Disposable package release upgrade rollback contracts
+        run: python3 -m unittest discover -s tests -p 'test_cdn_release_contract.py' -v
+      - name: Package hook and rollback safety contracts
+        run: python3 -m unittest discover -s tests -p 'test_cdn_hook_contract.py' -v
+      - name: B0 document safety gates
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("docs/ROUTER_B0_READONLY_PREFLIGHT.md").read_text()
+          for required in ("opkg print-architecture", "ubus call system board", "ip -6 rule show", "B Upload", "C Installation", "D Public Probe", "E DNS", "No-Go", "OFFLINE ONLY"):
+              assert required in p, required
+          assert "No ping" in p
+          assert "Reconcile the LIVE PR head" in p
+          assert "opkg status rpcd" in p
+          assert "opkg status luci-base" in p
+          assert "opkg print-architecture" in p
+          assert "STOP" in p and "ABI" in p
+          assert "do not SSH" in p
+          PY
+      - name: Disposable opkg transaction harness syntax
+        run: sh -n tools/test_real_opkg_transaction.sh
+      - name: BusyBox-compatible shell syntax
+        run: |
+          sh -n openwrt/cdn-optimizer/files/etc/init.d/cdn-optimizer
+          sh -n openwrt/cdn-optimizer/files/usr/libexec/cdn-optimizer/status
+          sh -n openwrt/cdn-optimizer/files/usr/libexec/cdn-optimizer/run-once
+          sh -n openwrt/cdn-optimizer/files/usr/libexec/rpcd/cdn-optimizer
+      - name: JavaScript syntax
+        run: for file in openwrt/luci-app-cdn-optimizer/htdocs/luci-static/resources/view/cdn-optimizer/*.js; do node --check "$file"; done

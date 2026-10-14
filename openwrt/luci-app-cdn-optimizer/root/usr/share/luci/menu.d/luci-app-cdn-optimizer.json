@@ -1,0 +1,41 @@
+{
+  "admin/services/cdn-optimizer": {
+    "title": "CDN Diagnostics",
+    "order": 85,
+    "action": {
+      "type": "view",
+      "path": "cdn-optimizer/overview"
+    },
+    "depends": {
+      "acl": [
+        "luci-app-cdn-optimizer"
+      ]
+    }
+  },
+  "admin/services/cdn-optimizer/results": {
+    "title": "Results",
+    "order": 86,
+    "action": {
+      "type": "view",
+      "path": "cdn-optimizer/results"
+    },
+    "depends": {
+      "acl": [
+        "luci-app-cdn-optimizer"
+      ]
+    }
+  },
+  "admin/services/cdn-optimizer/settings": {
+    "title": "Settings",
+    "order": 87,
+    "action": {
+      "type": "view",
+      "path": "cdn-optimizer/settings"
+    },
+    "depends": {
+      "acl": [
+        "luci-app-cdn-optimizer"
+      ]
+    }
+  }
+}

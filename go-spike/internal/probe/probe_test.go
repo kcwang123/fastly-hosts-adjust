@@ -48,7 +48,7 @@ func TestTLSPositiveAndNegative(t *testing.T){
  if _,e=Range(context.Background(),"pbs.twimg.com","8.8.8.8",4,roots,dial);e==nil{t.Fatal("hostname mismatch accepted")}
 }
 func TestRejectTargets(t *testing.T){
- for _,ip:=range []string{"127.0.0.1","192.168.1.1","::1","bad"}{
+ for _,ip:=range []string{"127.0.0.1","192.168.1.1","100.64.1.1","192.0.2.10","198.18.0.1","198.51.100.5","203.0.113.7","::1","bad"}{
  if _,e:=Range(context.Background(),"raw.githubusercontent.com",ip,4,nil,nil);e==nil{t.Fatalf("accepted %s",ip)}
  }
  if _,e:=Range(context.Background(),"invalid.example","8.8.8.8",4,nil,nil);e==nil{t.Fatal("accepted unapproved host")}

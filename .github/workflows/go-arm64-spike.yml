@@ -5,6 +5,9 @@ on:
     paths: ["go-spike/**", ".github/workflows/go-arm64-spike.yml"]
   pull_request:
     paths: ["go-spike/**", ".github/workflows/go-arm64-spike.yml"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -59,15 +62,21 @@ jobs:
           file /tmp/fastly-local-health-arm64
           stat -c 'arm64_local_health_binary_bytes=%s' /tmp/fastly-local-health-arm64
           test "$(stat -c %s /tmp/fastly-local-health-arm64)" -lt 10485760
+          go build -trimpath -ldflags="-s -w" -o /tmp/fastly-public-health-arm64 ./cmd/fastly-public-health
+          file /tmp/fastly-public-health-arm64
+          test "$(stat -c %s /tmp/fastly-public-health-arm64)" -lt 10485760
+          go build -trimpath -ldflags="-s -w" -o /tmp/fastly-decision-arm64 ./cmd/fastly-decision
+          file /tmp/fastly-decision-arm64
+          test "$(stat -c %s /tmp/fastly-decision-arm64)" -lt 10485760
       - name: Record immutable source and artifact checksums
         env:
           SOURCE_SHA: ${{ github.sha }}
         run: |
           set -eu
           mkdir -p /tmp/fastly-preflight
-          cp /tmp/fastly-readonly-arm64 /tmp/fastly-local-health-arm64 /tmp/fastly-preflight/
+          cp /tmp/fastly-readonly-arm64 /tmp/fastly-local-health-arm64 /tmp/fastly-public-health-arm64 /tmp/fastly-decision-arm64 /tmp/fastly-preflight/
           cd /tmp/fastly-preflight
-          sha256sum fastly-readonly-arm64 fastly-local-health-arm64 > SHA256SUMS
+          sha256sum fastly-readonly-arm64 fastly-local-health-arm64 fastly-public-health-arm64 fastly-decision-arm64 > SHA256SUMS
           printf "source_commit=%s\n" "$SOURCE_SHA" > BUILD-IDENTITY.txt
           go version >> BUILD-IDENTITY.txt
           printf "build_flags=CGO_ENABLED=0 GOOS=linux GOARCH=arm64 GOARM64=v8.0 -trimpath -ldflags=-s,-w\n" >> BUILD-IDENTITY.txt
@@ -80,6 +89,8 @@ jobs:
           path: |
             /tmp/fastly-preflight/fastly-readonly-arm64
             /tmp/fastly-preflight/fastly-local-health-arm64
+            /tmp/fastly-preflight/fastly-public-health-arm64
+            /tmp/fastly-preflight/fastly-decision-arm64
             /tmp/fastly-preflight/SHA256SUMS
             /tmp/fastly-preflight/BUILD-IDENTITY.txt
           retention-days: 7
