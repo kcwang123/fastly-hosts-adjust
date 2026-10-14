@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "openwrt/cdn-optimizer/**"
+      - "openwrt/luci-app-cdn-optimizer/**"
       - ".github/workflows/openwrt-sdk-ipk.yml"
       - "go-spike/**"
 permissions:
@@ -81,6 +82,8 @@ jobs:
           test -f unpack/control/control
           grep -qx 'Architecture: aarch64_cortex-a53' unpack/control/control
           grep -qx 'Package: cdn-optimizer' unpack/control/control
+          grep -qx 'Version: 0.1.0-2' unpack/control/control
+          grep -qx 'Depends: libc, ca-bundle, jsonfilter' unpack/control/control
           test -x unpack/data/usr/bin/fastly-public-health
           test -x unpack/data/usr/libexec/cdn-optimizer/run-once
           test -x unpack/data/usr/libexec/rpcd/cdn-optimizer
@@ -99,6 +102,9 @@ jobs:
           tar -xzf "$lcontrol" -C unpack-luci/control
           tar -xzf "$ldata" -C unpack-luci/data
           grep -qx 'Package: luci-app-cdn-optimizer' unpack-luci/control/control
+          grep -qx 'Version: 0.1.0-2' unpack-luci/control/control
+          grep -qx 'Architecture: all' unpack-luci/control/control
+          grep -qx 'Depends: libc, cdn-optimizer, luci-base' unpack-luci/control/control
           grep -q 'cdn-optimizer' unpack-luci/control/control
           grep -q 'luci-base' unpack-luci/control/control
           for page in overview results settings; do
