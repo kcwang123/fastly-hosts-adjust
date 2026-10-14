@@ -139,6 +139,8 @@ jobs:
           evidence="$RUNNER_TEMP/sdk-evidence"
           sdkhost="$RUNNER_TEMP/sdk/staging_dir/host"
           test -x "$sdkhost/bin/opkg" || { echo REAL_OPKG_BINARY_NOT_FOUND; exit 47; }
+          file "$sdkhost/bin/opkg"
+          readlink -f "$sdkhost/bin/opkg"
           echo "$OLD_CORE_SHA256  $old/cdn-optimizer_0.1.0-1_aarch64_cortex-a53.ipk" | sha256sum -c -
           echo "$OLD_LUCI_SHA256  $old/luci-app-cdn-optimizer_0.1.0-1_all.ipk" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/opkg-transaction-input"
@@ -158,7 +160,7 @@ jobs:
             -e OLD_LUCI=/inputs/luci-app-cdn-optimizer_0.1.0-1_all.ipk \
             -e NEW_CORE=/inputs/cdn-optimizer_0.1.0-2_aarch64_cortex-a53.ipk \
             -e NEW_LUCI=/inputs/luci-app-cdn-optimizer_0.1.0-2_all.ipk \
-            ubuntu:20.04 sh /test.sh | tee "$evidence/OPKG-TRANSACTION.txt"
+            ubuntu:22.04 sh /test.sh | tee "$evidence/OPKG-TRANSACTION.txt"
           grep -qx REAL_OPKG_TRANSACTION_PASS "$evidence/OPKG-TRANSACTION.txt"
       - uses: actions/upload-artifact@v4
         with:
