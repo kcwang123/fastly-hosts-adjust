@@ -117,17 +117,22 @@ jobs:
           file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
           cat SHA256SUMS BUILD-IDENTITY.txt FILE-TYPES.txt
           rm -rf unpack unpack-luci
-      - name: Download pinned rollback IPKs (original 0.1.0-1)
-        uses: actions/download-artifact@v4
-        with:
-          name: openwrt-filogic-sdk-ipk-89d8a65bad22efed41b73362871e38038f1401c0
-          run-id: 38437888881
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: ${{ runner.temp }}/old-ipk
+      - name: Fetch original pre-jsonfilter 0.1.0-1 rollback artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/old-ipk"
+          curl --fail --silent --show-error --location --retry 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -o "$RUNNER_TEMP/original-ipks.zip" \
+            "https://api.github.com/repos/kcwang123/fastly-hosts-adjust/actions/artifacts/11797951884/zip"
+          unzip -q "$RUNNER_TEMP/original-ipks.zip" -d "$RUNNER_TEMP/old-ipk"
       - name: Real opkg transaction inside sealed disposable container
         env:
-          OLD_CORE_SHA256: faab73b9be8bcac83b2a70efc71058ecb5df26180dc291d5cd7463d8b10c0f73
-          OLD_LUCI_SHA256: 130ea2dc84e888b75f11b9367a1bc092e5da623145a3e6b57ea6e29cbc67b0c4
+          OLD_CORE_SHA256: 3155717f93f9289b3bd3ce0965ee532f915237bc4a313c1fb5dd6db897ab3f70
+          OLD_LUCI_SHA256: e43f17b70e54766214d244d1492ce3eda0db7908b50ccaaa51a56b9d8ad96c73
         run: |
           set -euo pipefail
           old="$RUNNER_TEMP/old-ipk"
