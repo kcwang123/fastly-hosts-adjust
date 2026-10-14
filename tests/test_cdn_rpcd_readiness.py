@@ -35,6 +35,11 @@ class ReadinessTests(unittest.TestCase):
     def test_no_scan_and_failclosed(self):
         for methods, status in (
             (GOOD_METHODS + ' "scan":{}', GOOD_STATUS),
+            (GOOD_METHODS.replace('"status":{}', '"status":{ "x":"y" }'), GOOD_STATUS),
+            (GOOD_METHODS.replace('@ab123', '@INVALID'), GOOD_STATUS),
+            (GOOD_METHODS, GOOD_STATUS.replace('"safe_to_apply":false', '"safe_to_apply":false,"extra":1')),
+            (GOOD_METHODS, GOOD_STATUS.replace('"safe_to_apply":false', '"safe_to_apply":false,"safe_to_apply":false')),
+            (GOOD_METHODS, GOOD_STATUS.replace('"schema_version":1', '"schema_version":true')),
             (GOOD_METHODS, '{"schema_version":1,"status":"ok","safe_to_apply":true}'),
             (GOOD_METHODS, '{"schema_version":1,"status":"not_tested","safe_to_apply":false'),
         ):
