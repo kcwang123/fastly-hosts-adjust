@@ -85,6 +85,8 @@ jobs:
           grep -qx 'Package: cdn-optimizer' unpack/control/control
           grep -qx 'Version: 0.1.0-2' unpack/control/control
           grep -qx 'Depends: libc, ca-bundle, jsonfilter' unpack/control/control
+          test -f unpack/control/conffiles
+          grep -qx '/etc/config/cdn_optimizer' unpack/control/conffiles
           test -x unpack/data/usr/bin/fastly-public-health
           test -x unpack/data/usr/libexec/cdn-optimizer/run-once
           test -x unpack/data/usr/libexec/rpcd/cdn-optimizer
