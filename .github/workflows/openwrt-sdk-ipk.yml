@@ -9,6 +9,7 @@ on:
       - "go-spike/**"
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: sdk-ipk-${{ github.ref }}
   cancel-in-progress: true
@@ -116,6 +117,44 @@ jobs:
           file "$(basename "$ipk")" "$binary" > FILE-TYPES.txt
           cat SHA256SUMS BUILD-IDENTITY.txt FILE-TYPES.txt
           rm -rf unpack unpack-luci
+      - name: Download pinned rollback IPKs (original 0.1.0-1)
+        uses: actions/download-artifact@v4
+        with:
+          name: openwrt-filogic-sdk-ipk-89d8a65bad22efed41b73362871e38038f1401c0
+          run-id: 38437888881
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/old-ipk
+      - name: Real opkg transaction inside sealed disposable container
+        env:
+          OLD_CORE_SHA256: faab73b9be8bcac83b2a70efc71058ecb5df26180dc291d5cd7463d8b10c0f73
+          OLD_LUCI_SHA256: 130ea2dc84e888b75f11b9367a1bc092e5da623145a3e6b57ea6e29cbc67b0c4
+        run: |
+          set -euo pipefail
+          old="$RUNNER_TEMP/old-ipk"
+          evidence="$RUNNER_TEMP/sdk-evidence"
+          sdkhost="$RUNNER_TEMP/sdk/staging_dir/host"
+          test -x "$sdkhost/bin/opkg" || { echo REAL_OPKG_BINARY_NOT_FOUND; exit 47; }
+          echo "$OLD_CORE_SHA256  $old/cdn-optimizer_0.1.0-1_aarch64_cortex-a53.ipk" | sha256sum -c -
+          echo "$OLD_LUCI_SHA256  $old/luci-app-cdn-optimizer_0.1.0-1_all.ipk" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/opkg-transaction-input"
+          input="$RUNNER_TEMP/opkg-transaction-input"
+          cp "$old/"*.ipk "$input/"
+          cp "$evidence/"*.ipk "$input/"
+          # All package scripts run ONLY inside Docker container with no host service mounts.
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 64 --memory 256m --cpus 1 \
+            --tmpfs /work:rw,exec,nosuid,nodev,size=64m \
+            --tmpfs /tmp:rw,nosuid,nodev,size=16m \
+            --mount "type=bind,src=$sdkhost,dst=/sdkhost,readonly" \
+            --mount "type=bind,src=$input,dst=/inputs,readonly" \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/tools/test_real_opkg_transaction.sh,dst=/test.sh,readonly" \
+            -e OPKG_BIN=/sdkhost/bin/opkg -e LD_LIBRARY_PATH=/sdkhost/lib \
+            -e OLD_CORE=/inputs/cdn-optimizer_0.1.0-1_aarch64_cortex-a53.ipk \
+            -e OLD_LUCI=/inputs/luci-app-cdn-optimizer_0.1.0-1_all.ipk \
+            -e NEW_CORE=/inputs/cdn-optimizer_0.1.0-2_aarch64_cortex-a53.ipk \
+            -e NEW_LUCI=/inputs/luci-app-cdn-optimizer_0.1.0-2_all.ipk \
+            ubuntu:22.04 sh /test.sh | tee "$evidence/OPKG-TRANSACTION.txt"
+          grep -qx REAL_OPKG_TRANSACTION_PASS "$evidence/OPKG-TRANSACTION.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: openwrt-filogic-sdk-ipk-${{ github.event.pull_request.head.sha || github.sha }}
