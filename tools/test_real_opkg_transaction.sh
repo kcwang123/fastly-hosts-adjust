@@ -38,7 +38,7 @@ arch noarch 1
 arch aarch64_cortex-a53 10
 EOF
 mkdir -p /work/lists
-opkg() { LD_LIBRARY_PATH=/sdkhost/lib "${OPKG_BIN}" -f /work/opkg.conf -o /work/root "$@"; }
+opkg() { "${OPKG_BIN}" -f /work/opkg.conf -o /work/root "$@"; }
 logstatus() {
   opkg status cdn-optimizer > "/work/$1-core.status"
   opkg status luci-app-cdn-optimizer > "/work/$1-luci.status"
