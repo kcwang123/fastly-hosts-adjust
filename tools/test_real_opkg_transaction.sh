@@ -66,7 +66,10 @@ assert_field /work/upgraded-core.status 'Version: 0.1.0-2'
 assert_field /work/upgraded-core.status 'Depends: libc, ca-bundle, jsonfilter'
 assert_field /work/upgraded-luci.status 'Version: 0.1.0-2'
 grep -F '# harness-preserve-marker-8234' "$cfg" >/dev/null || { echo 'UPGRADE_CONFIG_LOST'; exit 43; }
-# Downgrade requires explicit force-downgrade; not same as automatic recovery.
+# Capture config outside package root BEFORE downgrade (explicit rollback preparation).
+cp "$cfg" /work/rollback-config.snapshot
+test "$(sha256sum /work/rollback-config.snapshot | cut -d' ' -f1)" = "$sha" || exit 45
+# Downgrade requires explicit force-downgrade; not automatic recovery.
 IPKG_NO_SCRIPT=1 opkg --force-downgrade install "${OLD_CORE}" "${OLD_LUCI}"
 logstatus rollback
 assert_field /work/rollback-core.status 'Version: 0.1.0-1'
