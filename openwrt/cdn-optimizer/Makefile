@@ -14,6 +14,10 @@ define Package/cdn-optimizer
  DEPENDS:=+ca-bundle +jsonfilter
 endef
 
+define Package/cdn-optimizer/conffiles
+/etc/config/cdn_optimizer
+endef
+
 define Package/cdn-optimizer/description
  Disabled-by-default diagnostic scaffolding; no automatic public probes or DNS changes.
 endef
