@@ -150,20 +150,26 @@ jobs:
           cp "$old/"*.ipk "$input/"
           cp "$evidence/"*.ipk "$input/"
           # All package scripts run ONLY inside Docker container with no host service mounts.
-          docker run --rm --network none --read-only --cap-drop ALL \
+          for mode in none partial_upgrade missing_snapshot tampered_snapshot; do
+            docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --pids-limit 64 --memory 256m --cpus 1 \
             --tmpfs /work:rw,exec,nosuid,nodev,size=64m \
             --tmpfs /tmp:rw,nosuid,nodev,size=16m \
             --mount "type=bind,src=$sdkhost,dst=/sdkhost,readonly" \
             --mount "type=bind,src=$input,dst=/inputs,readonly" \
             --mount "type=bind,src=$GITHUB_WORKSPACE/tools/test_real_opkg_transaction.sh,dst=/test.sh,readonly" \
-            -e OPKG_BIN=/sdkhost/bin/opkg \
+              -e INJECT_FAILURE="$mode" \
+              -e OPKG_BIN=/sdkhost/bin/opkg \
             -e OLD_CORE=/inputs/cdn-optimizer_0.1.0-1_aarch64_cortex-a53.ipk \
             -e OLD_LUCI=/inputs/luci-app-cdn-optimizer_0.1.0-1_all.ipk \
             -e NEW_CORE=/inputs/cdn-optimizer_0.1.0-2_aarch64_cortex-a53.ipk \
             -e NEW_LUCI=/inputs/luci-app-cdn-optimizer_0.1.0-2_all.ipk \
-            ubuntu:22.04 sh /test.sh | tee "$evidence/OPKG-TRANSACTION.txt"
-          grep -qx REAL_OPKG_TRANSACTION_PASS "$evidence/OPKG-TRANSACTION.txt"
+            ubuntu:22.04 sh /test.sh | tee "$evidence/OPKG-TRANSACTION-$mode.txt"
+          done
+          grep -qx REAL_OPKG_TRANSACTION_PASS "$evidence/OPKG-TRANSACTION-none.txt"
+          grep -qx INJECT_PARTIAL_UPGRADE_DETECTED_BLOCK_OPERATOR_RECOVERY "$evidence/OPKG-TRANSACTION-partial_upgrade.txt"
+          grep -qx INJECT_MISSING_SNAPSHOT_BLOCK_BEFORE_DOWNGRADE "$evidence/OPKG-TRANSACTION-missing_snapshot.txt"
+          grep -qx INJECT_TAMPERED_SNAPSHOT_HASH_BLOCK_BEFORE_DOWNGRADE "$evidence/OPKG-TRANSACTION-tampered_snapshot.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: openwrt-filogic-sdk-ipk-${{ github.event.pull_request.head.sha || github.sha }}
