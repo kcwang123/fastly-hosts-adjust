@@ -153,7 +153,7 @@ jobs:
             --mount "type=bind,src=$sdkhost,dst=/sdkhost,readonly" \
             --mount "type=bind,src=$input,dst=/inputs,readonly" \
             --mount "type=bind,src=$GITHUB_WORKSPACE/tools/test_real_opkg_transaction.sh,dst=/test.sh,readonly" \
-            -e OPKG_BIN=/sdkhost/bin/opkg -e LD_LIBRARY_PATH=/sdkhost/lib \
+            -e OPKG_BIN=/sdkhost/bin/opkg \
             -e OLD_CORE=/inputs/cdn-optimizer_0.1.0-1_aarch64_cortex-a53.ipk \
             -e OLD_LUCI=/inputs/luci-app-cdn-optimizer_0.1.0-1_all.ipk \
             -e NEW_CORE=/inputs/cdn-optimizer_0.1.0-2_aarch64_cortex-a53.ipk \
