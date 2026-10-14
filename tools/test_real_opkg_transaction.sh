@@ -55,11 +55,21 @@ IPKG_NO_SCRIPT=1 opkg install "${OLD_CORE}" "${OLD_LUCI}"
 logstatus old
 assert_field /work/old-core.status 'Version: 0.1.0-1'
 assert_field /work/old-core.status 'Depends: libc, ca-bundle'
+mode="${INJECT_FAILURE:-none}"
+case "$mode" in none|partial_upgrade|missing_snapshot|tampered_snapshot) ;; *) echo INJECTION_INVALID; exit 65;; esac
 # Preserve custom UCI content, verify upgrade/rollback does not clobber.
 cfg=/work/root/etc/config/cdn_optimizer
 test -f "$cfg" || { echo 'CONFIG_MISSING'; exit 42; }
 printf '\n# harness-preserve-marker-8234\n' >> "$cfg"
 sha="$(sha256sum "$cfg" | cut -d' ' -f1)"
+if [ "$mode" = partial_upgrade ]; then
+  IPKG_NO_SCRIPT=1 opkg install "${NEW_CORE}"
+  logstatus partial
+  assert_field /work/partial-core.status 'Version: 0.1.0-2'
+  assert_field /work/partial-luci.status 'Version: 0.1.0-1'
+  echo 'INJECT_PARTIAL_UPGRADE_DETECTED_BLOCK_OPERATOR_RECOVERY'
+  exit 0
+fi
 IPKG_NO_SCRIPT=1 opkg install "${NEW_CORE}" "${NEW_LUCI}"
 logstatus upgraded
 assert_field /work/upgraded-core.status 'Version: 0.1.0-2'
@@ -68,6 +78,18 @@ assert_field /work/upgraded-luci.status 'Version: 0.1.0-2'
 grep -F '# harness-preserve-marker-8234' "$cfg" >/dev/null || { echo 'UPGRADE_CONFIG_LOST'; exit 43; }
 # Capture config outside package root BEFORE downgrade (explicit rollback preparation).
 cp "$cfg" /work/rollback-config.snapshot
+if [ "$mode" = missing_snapshot ]; then
+  rm /work/rollback-config.snapshot
+  [ ! -e /work/rollback-config.snapshot ] || exit 51
+  echo 'INJECT_MISSING_SNAPSHOT_BLOCK_BEFORE_DOWNGRADE'
+  exit 0
+fi
+if [ "$mode" = tampered_snapshot ]; then
+  printf '%s\n' '# tampered' >> /work/rollback-config.snapshot
+  [ "$(sha256sum /work/rollback-config.snapshot | cut -d' ' -f1)" != "$sha" ] || exit 52
+  echo 'INJECT_TAMPERED_SNAPSHOT_HASH_BLOCK_BEFORE_DOWNGRADE'
+  exit 0
+fi
 test "$(sha256sum /work/rollback-config.snapshot | cut -d' ' -f1)" = "$sha" || exit 45
 # Downgrade requires explicit force-downgrade; not automatic recovery.
 IPKG_NO_SCRIPT=1 opkg --force-downgrade install "${OLD_CORE}" "${OLD_LUCI}"
