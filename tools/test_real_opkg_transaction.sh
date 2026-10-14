@@ -30,15 +30,21 @@ Status: install ok installed
 
 EOF
 cat > /work/opkg.conf <<'EOF'
-dest root /work/root
+dest root /
 lists_dir ext /work/lists
-option offline_root /work/root
 arch all 1
 arch noarch 1
 arch aarch64_cortex-a53 10
 EOF
 mkdir -p /work/lists
 opkg() { "${OPKG_BIN}" -f /work/opkg.conf -o /work/root "$@"; }
+# Fail closed if the actual opkg resolver cannot see disposable image prerequisites.
+for pkg in libc ca-bundle jsonfilter luci-base; do
+  opkg status "$pkg" | grep -F 'Status: install ok installed' >/dev/null || {
+    echo "FIXTURE_PREREQUISITE_INVISIBLE: $pkg"
+    exit 39
+  }
+done
 logstatus() {
   opkg status cdn-optimizer > "/work/$1-core.status"
   opkg status luci-app-cdn-optimizer > "/work/$1-luci.status"
