@@ -85,6 +85,14 @@ jobs:
           grep -qx 'Package: cdn-optimizer' unpack/control/control
           grep -qx 'Version: 0.1.0-2' unpack/control/control
           grep -qx 'Depends: libc, ca-bundle, jsonfilter' unpack/control/control
+          for hook in postinst prerm; do
+            test -f "unpack/control/$hook"
+            sh -n "unpack/control/$hook"
+          done
+          grep -Fq 'IPKG_NO_SCRIPT' unpack/control/postinst
+          grep -Fq 'default_prerm' unpack/control/prerm
+          cp unpack/control/postinst CORE-POSTINST.txt
+          cp unpack/control/prerm CORE-PRERM.txt
           test -f unpack/control/conffiles
           grep -qx '/etc/config/cdn_optimizer' unpack/control/conffiles
           test -x unpack/data/usr/bin/fastly-public-health
@@ -104,6 +112,14 @@ jobs:
           test -n "$lcontrol" && test -n "$ldata"
           tar -xzf "$lcontrol" -C unpack-luci/control
           tar -xzf "$ldata" -C unpack-luci/data
+          for hook in postinst prerm; do
+            test -f "unpack-luci/control/$hook"
+            sh -n "unpack-luci/control/$hook"
+          done
+          grep -Fq 'IPKG_NO_SCRIPT' unpack-luci/control/postinst
+          grep -Fq 'default_prerm' unpack-luci/control/prerm
+          cp unpack-luci/control/postinst LUCI-POSTINST.txt
+          cp unpack-luci/control/prerm LUCI-PRERM.txt
           grep -qx 'Package: luci-app-cdn-optimizer' unpack-luci/control/control
           grep -qx 'Version: 0.1.0-2' unpack-luci/control/control
           grep -qx 'Architecture: all' unpack-luci/control/control
