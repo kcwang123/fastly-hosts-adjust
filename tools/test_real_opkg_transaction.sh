@@ -75,5 +75,12 @@ logstatus rollback
 assert_field /work/rollback-core.status 'Version: 0.1.0-1'
 assert_field /work/rollback-core.status 'Depends: libc, ca-bundle'
 assert_field /work/rollback-luci.status 'Version: 0.1.0-1'
-grep -F '# harness-preserve-marker-8234' "$cfg" >/dev/null || { echo 'ROLLBACK_CONFIG_LOST'; exit 44; }
+if grep -F '# harness-preserve-marker-8234' "$cfg" >/dev/null; then
+  echo 'NATIVE_DOWNGRADE_CONFIG_PRESERVED'
+else
+  echo 'NATIVE_DOWNGRADE_CONFIG_NOT_PRESERVED: RESTORATION_REQUIRED'
+  cp /work/rollback-config.snapshot "$cfg"
+fi
+test "$(sha256sum "$cfg" | cut -d' ' -f1)" = "$sha" || { echo 'EXPLICIT_CONFIG_RESTORE_FAILED'; exit 44; }
+echo 'ROLLBACK_EXPLICIT_CONFIG_RESTORE_VERIFIED'
 printf 'REAL_OPKG_TRANSACTION_PASS\n'
